@@ -46,6 +46,14 @@ func Setup(authService *auth.Service, hub *websocket.Hub, cfg *config.Config) *g
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
+	// Static files
+	router.Static("/static", "./web/static")
+
+	// Web pages
+	router.StaticFile("/", "./web/index.html")
+	router.StaticFile("/index.html", "./web/index.html")
+	router.StaticFile("/chat.html", "./web/chat.html")
+
 	// WebSocket endpoint
 	router.GET("/ws", hub.HandleWebSocket(authService))
 
