@@ -13,12 +13,21 @@
 
 ```
 messenger/
-├── cmd/server/main.go              # Главный сервер приложения
+├── cmd/server/main.go              # Главный сервер приложения (79 строк)
 ├── internal/
 │   ├── auth/service.go            # Сервис аутентификации (JWT)
 │   ├── config/config.go           # Конфигурация приложения
 │   ├── db/database.go             # Подключение к PostgreSQL
 │   ├── middleware/auth.go         # Middleware для авторизации
+│   ├── handlers/                  # HTTP обработчики
+│   │   ├── auth.go                # Аутентификация (67 строк)
+│   │   ├── user.go                # Пользователи (42 строки)
+│   │   ├── chat.go                # Чаты (49 строк)
+│   │   ├── message.go             # Сообщения (44 строки)
+│   │   ├── contact.go             # Контакты (39 строк)
+│   │   ├── call.go                # Звонки (39 строк)
+│   │   └── upload.go              # Загрузка файлов (18 строк)
+│   ├── router/router.go           # Роутер (125 строк)
 │   └── websocket/
 │       ├── hub.go                 # WebSocket хаб
 │       └── client.go              # WebSocket клиент
