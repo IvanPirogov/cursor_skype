@@ -100,6 +100,9 @@ class ChatController {
         this.messageText.addEventListener('input', () => {
             this.adjustTextareaHeight();
         });
+
+        // Инициализация состояния поля участников
+        this.initializeParticipantsField();
     }
 
     setupModalHandlers() {
@@ -513,12 +516,22 @@ class ChatController {
         this.handleChatTypeChange('public');
     }
 
+    initializeParticipantsField() {
+        // Устанавливаем начальное состояние поля участников
+        const chatTypeSelect = document.getElementById('chat-type');
+        if (chatTypeSelect) {
+            this.handleChatTypeChange(chatTypeSelect.value);
+        }
+    }
+
     handleChatTypeChange(chatType) {
         const participantsGroup = document.getElementById('participants-group');
-        if (chatType === 'public') {
-            participantsGroup.style.display = 'none';
-        } else {
-            participantsGroup.style.display = 'block';
+        if (participantsGroup) {
+            if (chatType === 'public') {
+                participantsGroup.classList.remove('show');
+            } else {
+                participantsGroup.classList.add('show');
+            }
         }
     }
 

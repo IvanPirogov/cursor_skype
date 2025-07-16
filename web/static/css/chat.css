@@ -635,3 +635,12 @@
         padding: 12px 0;
     }
 }
+
+/* Скрытие поля участников для публичных чатов */
+#participants-group {
+    display: none !important;
+}
+
+#participants-group.show {
+    display: block !important;
+}
