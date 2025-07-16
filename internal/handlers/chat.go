@@ -34,6 +34,7 @@ func (h *ChatHandler) GetChats(c *gin.Context) {
 		return
 	}
 
+	// Получаем чаты, где пользователь является участником
 	var chatMembers []models.ChatMember
 	err = h.db.DB.Preload("Chat.Creator").
 		Preload("Chat.Members.User").
@@ -44,13 +45,44 @@ func (h *ChatHandler) GetChats(c *gin.Context) {
 		Find(&chatMembers).Error
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch chats"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user chats"})
 		return
 	}
 
-	chats := make([]models.Chat, len(chatMembers))
-	for i, member := range chatMembers {
-		chats[i] = member.Chat
+	// Создаем map для отслеживания уже добавленных чатов
+	chatMap := make(map[uuid.UUID]models.Chat)
+	
+	// Добавляем чаты, где пользователь является участником
+	for _, member := range chatMembers {
+		chatMap[member.Chat.ID] = member.Chat
+	}
+
+	// Получаем все публичные каналы
+	var publicChannels []models.Chat
+	err = h.db.DB.Preload("Creator").
+		Preload("Members.User").
+		Preload("Messages", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at DESC").Limit(1)
+		}).
+		Where("type = ? AND is_active = ?", models.ChatTypeChannel, true).
+		Find(&publicChannels).Error
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch public channels"})
+		return
+	}
+
+	// Добавляем публичные каналы (если они еще не добавлены)
+	for _, channel := range publicChannels {
+		if _, exists := chatMap[channel.ID]; !exists {
+			chatMap[channel.ID] = channel
+		}
+	}
+
+	// Преобразуем map в slice
+	chats := make([]models.Chat, 0, len(chatMap))
+	for _, chat := range chatMap {
+		chats = append(chats, chat)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"chats": chats})
