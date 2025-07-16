@@ -64,7 +64,7 @@ func (h *ChatHandler) GetChats(c *gin.Context) {
 		Preload("Messages", func(db *gorm.DB) *gorm.DB {
 			return db.Order("created_at DESC").Limit(1)
 		}).
-		Where("type = ? AND is_active = ?", models.ChatTypeChannel, true).
+		Where("type = ? AND is_active = ?", models.ChatTypePublic, true).
 		Find(&publicChannels).Error
 
 	if err != nil {
