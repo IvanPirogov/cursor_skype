@@ -1,0 +1,102 @@
+{
+  "name": "messenger-desktop",
+  "version": "1.0.0",
+  "description": "Современный мессенджер для всех платформ",
+  "main": "main.js",
+  "author": "Messenger Team",
+  "license": "MIT",
+  "homepage": "https://github.com/messenger/desktop",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build-win": "electron-builder --win",
+    "build-mac": "electron-builder --mac",
+    "build-linux": "electron-builder --linux",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --publish=never",
+    "release": "electron-builder --publish=always",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "keywords": [
+    "messenger",
+    "chat",
+    "electron",
+    "desktop",
+    "cross-platform"
+  ],
+  "dependencies": {
+    "electron-store": "^8.1.0",
+    "electron-updater": "^6.1.0",
+    "electron-context-menu": "^3.6.1",
+    "ws": "^8.14.0",
+    "node-notifier": "^10.0.1",
+    "auto-launch": "^5.0.5"
+  },
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4",
+    "electron-devtools-installer": "^3.2.0"
+  },
+  "build": {
+    "appId": "com.messenger.desktop",
+    "productName": "Messenger",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "node_modules/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.social-networking",
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "category": "Network"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "messenger",
+      "repo": "desktop"
+    }
+  }
+}

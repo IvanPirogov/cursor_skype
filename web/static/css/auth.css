@@ -1,0 +1,292 @@
+/* Стили для страницы аутентификации */
+.auth-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.auth-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    width: 100%;
+    max-width: 400px;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #007bff, #28a745, #ffc107, #dc3545);
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.auth-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.auth-header p {
+    color: #666;
+    font-size: 16px;
+}
+
+.auth-form {
+    display: none;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+}
+
+.auth-form.active {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.auth-form h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.auth-form .form-group {
+    margin-bottom: 20px;
+}
+
+.auth-form .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #555;
+    font-size: 14px;
+}
+
+.auth-form .form-group input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    outline: none;
+    background-color: #fafafa;
+}
+
+.auth-form .form-group input:focus {
+    border-color: #007bff;
+    background-color: white;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.auth-form .form-group input:invalid {
+    border-color: #dc3545;
+}
+
+.auth-form .form-group input:valid {
+    border-color: #28a745;
+}
+
+.auth-form .btn {
+    width: 100%;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 600;
+    margin-top: 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.auth-form .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 123, 255, 0.3);
+}
+
+.auth-switch {
+    text-align: center;
+    margin-top: 24px;
+    color: #666;
+    font-size: 14px;
+}
+
+.auth-switch a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.auth-switch a:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+/* Анимации переключения форм */
+.auth-form.fade-out {
+    opacity: 0;
+    transform: translateY(-20px);
+}
+
+.auth-form.fade-in {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Индикатор загрузки */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.btn.loading {
+    position: relative;
+    color: transparent;
+}
+
+.btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s ease-in-out infinite;
+}
+
+/* Валидация форм */
+.form-group.has-error input {
+    border-color: #dc3545;
+    background-color: #fff5f5;
+}
+
+.form-group.has-success input {
+    border-color: #28a745;
+    background-color: #f8fff8;
+}
+
+.form-error {
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: 4px;
+    display: none;
+}
+
+.form-group.has-error .form-error {
+    display: block;
+}
+
+/* Адаптивность */
+@media (max-width: 480px) {
+    .auth-container {
+        padding: 16px;
+    }
+    
+    .auth-card {
+        padding: 32px 24px;
+    }
+    
+    .auth-header h1 {
+        font-size: 28px;
+    }
+    
+    .auth-form h2 {
+        font-size: 20px;
+    }
+    
+    .auth-form .form-group input {
+        padding: 12px 14px;
+    }
+    
+    .auth-form .btn {
+        padding: 14px;
+        font-size: 14px;
+    }
+}
+
+/* Темная тема (опционально) */
+@media (prefers-color-scheme: dark) {
+    .auth-container {
+        background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+    }
+    
+    .auth-card {
+        background: #2c3e50;
+        color: white;
+    }
+    
+    .auth-header h1 {
+        color: white;
+    }
+    
+    .auth-header p {
+        color: #bdc3c7;
+    }
+    
+    .auth-form h2 {
+        color: white;
+    }
+    
+    .auth-form .form-group label {
+        color: #bdc3c7;
+    }
+    
+    .auth-form .form-group input {
+        background-color: #34495e;
+        border-color: #34495e;
+        color: white;
+    }
+    
+    .auth-form .form-group input:focus {
+        background-color: #3c5a78;
+        border-color: #3498db;
+    }
+    
+    .auth-switch {
+        color: #bdc3c7;
+    }
+    
+    .auth-switch a {
+        color: #3498db;
+    }
+    
+    .auth-switch a:hover {
+        color: #2980b9;
+    }
+}
