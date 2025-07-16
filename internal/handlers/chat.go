@@ -105,7 +105,7 @@ func (h *ChatHandler) CreateChat(c *gin.Context) {
 	var request struct {
 		Name        string      `json:"name" binding:"required"`
 		Description string      `json:"description"`
-		Type        models.ChatType `json:"type" binding:"required"`
+		Type        models.ChatType `json:"type"`
 		MemberIDs   []uuid.UUID `json:"member_ids"`
 	}
 
@@ -114,11 +114,17 @@ func (h *ChatHandler) CreateChat(c *gin.Context) {
 		return
 	}
 
+	// Устанавливаем тип по умолчанию как public, если не указан
+	chatType := request.Type
+	if chatType == "" {
+		chatType = models.ChatTypePublic
+	}
+
 	// Создаем чат
 	chat := models.Chat{
 		Name:        request.Name,
 		Description: request.Description,
-		Type:        request.Type,
+		Type:        chatType,
 		CreatedBy:   userUUID,
 		IsActive:    true,
 	}
@@ -143,16 +149,18 @@ func (h *ChatHandler) CreateChat(c *gin.Context) {
 		return
 	}
 
-	// Добавляем других участников
-	for _, memberID := range request.MemberIDs {
-		if memberID != userUUID {
-			member := models.ChatMember{
-				ChatID:   chat.ID,
-				UserID:   memberID,
-				Role:     models.ChatMemberRoleMember,
-				IsActive: true,
+	// Добавляем других участников только для приватных и групповых чатов
+	if chatType != models.ChatTypePublic {
+		for _, memberID := range request.MemberIDs {
+			if memberID != userUUID {
+				member := models.ChatMember{
+					ChatID:   chat.ID,
+					UserID:   memberID,
+					Role:     models.ChatMemberRoleMember,
+					IsActive: true,
+				}
+				h.db.DB.Create(&member)
 			}
-			h.db.DB.Create(&member)
 		}
 	}
 
@@ -189,22 +197,40 @@ func (h *ChatHandler) GetChat(c *gin.Context) {
 		return
 	}
 
-	// Проверяем, является ли пользователь участником чата
-	var member models.ChatMember
-	err = h.db.DB.Where("chat_id = ? AND user_id = ? AND is_active = ?", chatID, userUUID, true).
-		First(&member).Error
+	// Сначала получаем информацию о чате
+	var chat models.Chat
+	err = h.db.DB.Where("id = ? AND is_active = ?", chatID, true).
+		First(&chat).Error
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this chat"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Chat not found"})
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check chat access"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch chat"})
 		}
 		return
 	}
 
+	// Для публичных чатов доступ разрешен всем
+	if chat.Type == models.ChatTypePublic {
+		// Продолжаем загрузку чата
+	} else {
+		// Для приватных и групповых чатов проверяем членство
+		var member models.ChatMember
+		err = h.db.DB.Where("chat_id = ? AND user_id = ? AND is_active = ?", chatID, userUUID, true).
+			First(&member).Error
+
+		if err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this chat"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check chat access"})
+			}
+			return
+		}
+	}
+
 	// Загружаем чат с полной информацией
-	var chat models.Chat
 	err = h.db.DB.Preload("Creator").
 		Preload("Members.User").
 		Preload("Messages.Sender").
@@ -255,24 +281,46 @@ func (h *ChatHandler) UpdateChat(c *gin.Context) {
 		return
 	}
 
-	// Проверяем права доступа (только админ или создатель может редактировать)
-	var member models.ChatMember
-	err = h.db.DB.Where("chat_id = ? AND user_id = ? AND is_active = ?", chatID, userUUID, true).
-		First(&member).Error
+	// Сначала получаем информацию о чате
+	var chat models.Chat
+	err = h.db.DB.Where("id = ? AND is_active = ?", chatID, true).
+		First(&chat).Error
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this chat"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Chat not found"})
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check chat access"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch chat"})
 		}
 		return
 	}
 
-	// Проверяем роль пользователя
-	if member.Role != models.ChatMemberRoleAdmin {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Only admins can update chat"})
-		return
+	// Для публичных чатов только создатель может редактировать
+	if chat.Type == models.ChatTypePublic {
+		if chat.CreatedBy != userUUID {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Only chat creator can update public chat"})
+			return
+		}
+	} else {
+		// Для приватных и групповых чатов проверяем права админа
+		var member models.ChatMember
+		err = h.db.DB.Where("chat_id = ? AND user_id = ? AND is_active = ?", chatID, userUUID, true).
+			First(&member).Error
+
+		if err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this chat"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check chat access"})
+			}
+			return
+		}
+
+		// Проверяем роль пользователя
+		if member.Role != models.ChatMemberRoleAdmin {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Only admins can update chat"})
+			return
+		}
 	}
 
 	// Обновляем чат
@@ -294,7 +342,6 @@ func (h *ChatHandler) UpdateChat(c *gin.Context) {
 	}
 
 	// Загружаем обновленный чат
-	var chat models.Chat
 	err = h.db.DB.Preload("Creator").
 		Preload("Members.User").
 		First(&chat, chatID).Error
