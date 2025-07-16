@@ -57,7 +57,7 @@ func (h *MessageHandler) GetMessages(c *gin.Context) {
 		Preload("ReplyTo").
 		Preload("Files").
 		Preload("Reactions.User").
-		Order("created_at DESC")
+		Order("created_at ASC")
 
 	// Фильтруем по чату или получателю
 	if chatIDStr != "" {
