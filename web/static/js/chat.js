@@ -123,6 +123,11 @@ class ChatController {
             this.hideModals();
         });
 
+        // Изменение типа чата
+        document.getElementById('chat-type').addEventListener('change', (e) => {
+            this.handleChatTypeChange(e.target.value);
+        });
+
         // Добавление контакта
         document.getElementById('add-contact').addEventListener('click', () => {
             this.addNewContact();
@@ -501,6 +506,20 @@ class ChatController {
     showNewChatModal() {
         this.modalOverlay.classList.remove('hidden');
         this.newChatModal.style.display = 'block';
+        // Устанавливаем публичный чат по умолчанию и скрываем участников
+        document.getElementById('chat-type').value = 'public';
+        document.getElementById('chat-name').value = '';
+        document.getElementById('chat-participants').value = '';
+        this.handleChatTypeChange('public');
+    }
+
+    handleChatTypeChange(chatType) {
+        const participantsGroup = document.getElementById('participants-group');
+        if (chatType === 'public') {
+            participantsGroup.style.display = 'none';
+        } else {
+            participantsGroup.style.display = 'block';
+        }
     }
 
     showAddContactModal() {
@@ -525,11 +544,17 @@ class ChatController {
         }
         
         try {
-            const result = await api.createChat({
+            const chatData = {
                 name: chatName,
-                type: chatType,
-                participants: participants.split(',').map(p => p.trim()).filter(p => p)
-            });
+                type: chatType
+            };
+            
+            // Добавляем участников только для приватных и групповых чатов
+            if (chatType !== 'public' && participants) {
+                chatData.member_ids = participants.split(',').map(p => p.trim()).filter(p => p);
+            }
+            
+            const result = await api.createChat(chatData);
             
             notifications.success('Чат создан', 'Новый чат успешно создан');
             this.hideModals();
