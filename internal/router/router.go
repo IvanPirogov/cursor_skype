@@ -37,7 +37,7 @@ func Setup(authService *auth.Service, hub *websocket.Hub, cfg *config.Config, da
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler()
 	chatHandler := handlers.NewChatHandler(database)
-	messageHandler := handlers.NewMessageHandler()
+	messageHandler := handlers.NewMessageHandler(database)
 	contactHandler := handlers.NewContactHandler()
 	callHandler := handlers.NewCallHandler()
 	uploadHandler := handlers.NewUploadHandler()
