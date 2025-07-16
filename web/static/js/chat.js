@@ -272,6 +272,8 @@ class ChatController {
     }
 
     async selectChat(chatId) {
+        console.log('Selecting chat:', chatId);
+        
         // Убираем выделение с предыдущего чата
         document.querySelectorAll('.chat-item').forEach(item => {
             item.classList.remove('active');
@@ -289,13 +291,17 @@ class ChatController {
             return;
         }
         
+        console.log('Current chat set to:', this.currentChat);
+        
         // Обновляем заголовок чата
         this.chatTitle.textContent = this.currentChat.name || 'Unknown';
         this.chatStatus.textContent = this.currentChat.is_online ? 'Онлайн' : 'Офлайн';
         
         // Загружаем сообщения
         try {
+            console.log('Loading messages for chat:', chatId);
             const messagesResponse = await api.getMessages(chatId);
+            console.log('Messages response:', messagesResponse);
             this.renderMessages(messagesResponse.messages || []);
         } catch (error) {
             console.error('Failed to load messages:', error);
@@ -304,8 +310,16 @@ class ChatController {
     }
 
     renderMessages(messages) {
+        console.log('Rendering messages:', messages);
         this.messages.innerHTML = '';
+        
+        if (messages.length === 0) {
+            console.log('No messages to render');
+            return;
+        }
+        
         messages.forEach(message => {
+            console.log('Creating message element for:', message);
             const messageElement = this.createMessageElement(message);
             this.messages.appendChild(messageElement);
         });
@@ -370,16 +384,26 @@ class ChatController {
         this.messageText.value = '';
         this.adjustTextareaHeight();
         
-        // Отправляем через WebSocket для мгновенного отображения
-        this.websocket.sendChatMessage(this.currentChat.id, content);
-        
-        // Отправляем через API для сохранения в базе
+        // Сначала отправляем через API для сохранения в базе
         try {
-            await api.sendMessage({
+            const response = await api.sendMessage({
                 chat_id: this.currentChat.id,
                 content: content,
                 type: 'text'
             });
+            
+            // Если сообщение успешно сохранено, отправляем через WebSocket
+            if (response && response.message) {
+                this.websocket.sendChatMessage(this.currentChat.id, content);
+                
+                // Добавляем сообщение в UI
+                const messageElement = this.createMessageElement(response.message);
+                this.messages.appendChild(messageElement);
+                this.scrollToBottom();
+                
+                // Обновляем список чатов
+                this.updateChatLastMessage(this.currentChat.id, content);
+            }
         } catch (error) {
             console.error('Failed to send message:', error);
             notifications.error('Ошибка', 'Не удалось отправить сообщение');
@@ -387,10 +411,16 @@ class ChatController {
     }
 
     handleNewMessage(data) {
+        console.log('Handling new message:', data);
+        console.log('Current chat:', this.currentChat);
+        
         if (data.chat_id === this.currentChat?.id) {
+            console.log('Adding message to current chat');
             const messageElement = this.createMessageElement(data);
             this.messages.appendChild(messageElement);
             this.scrollToBottom();
+        } else {
+            console.log('Message not for current chat');
         }
         
         // Обновляем список чатов
