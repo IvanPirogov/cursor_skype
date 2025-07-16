@@ -525,6 +525,9 @@ class ChatController {
     showAddContactModal() {
         this.modalOverlay.classList.remove('hidden');
         this.addContactModal.style.display = 'block';
+        // Очищаем поля при открытии
+        document.getElementById('contact-username').value = '';
+        document.getElementById('contact-nickname').value = '';
     }
 
     hideModals() {
