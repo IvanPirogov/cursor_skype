@@ -2,49 +2,483 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 	"messenger/pkg/models"
+	"messenger/internal/db"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type ChatHandler struct {
-	// TODO: Add chat service dependency
+	db *db.Database
 }
 
-func NewChatHandler() *ChatHandler {
-	return &ChatHandler{}
+func NewChatHandler(database *db.Database) *ChatHandler {
+	return &ChatHandler{
+		db: database,
+	}
 }
 
+// GetChats возвращает список чатов для текущего пользователя
 func (h *ChatHandler) GetChats(c *gin.Context) {
-	// TODO: Implement get user chats
-	c.JSON(http.StatusOK, gin.H{"chats": []models.Chat{}})
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	userUUID, err := uuid.Parse(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	var chatMembers []models.ChatMember
+	err = h.db.DB.Preload("Chat.Creator").
+		Preload("Chat.Members.User").
+		Preload("Chat.Messages", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at DESC").Limit(1)
+		}).
+		Where("user_id = ? AND is_active = ?", userUUID, true).
+		Find(&chatMembers).Error
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch chats"})
+		return
+	}
+
+	chats := make([]models.Chat, len(chatMembers))
+	for i, member := range chatMembers {
+		chats[i] = member.Chat
+	}
+
+	c.JSON(http.StatusOK, gin.H{"chats": chats})
 }
 
+// CreateChat создает новый чат
 func (h *ChatHandler) CreateChat(c *gin.Context) {
-	// TODO: Implement create chat
-	c.JSON(http.StatusCreated, gin.H{"message": "Chat created"})
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	userUUID, err := uuid.Parse(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	var request struct {
+		Name        string      `json:"name" binding:"required"`
+		Description string      `json:"description"`
+		Type        models.ChatType `json:"type" binding:"required"`
+		MemberIDs   []uuid.UUID `json:"member_ids"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		return
+	}
+
+	// Создаем чат
+	chat := models.Chat{
+		Name:        request.Name,
+		Description: request.Description,
+		Type:        request.Type,
+		CreatedBy:   userUUID,
+		IsActive:    true,
+	}
+
+	err = h.db.DB.Create(&chat).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create chat"})
+		return
+	}
+
+	// Добавляем создателя как участника с ролью админа
+	creatorMember := models.ChatMember{
+		ChatID:   chat.ID,
+		UserID:   userUUID,
+		Role:     models.ChatMemberRoleAdmin,
+		IsActive: true,
+	}
+
+	err = h.db.DB.Create(&creatorMember).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add creator to chat"})
+		return
+	}
+
+	// Добавляем других участников
+	for _, memberID := range request.MemberIDs {
+		if memberID != userUUID {
+			member := models.ChatMember{
+				ChatID:   chat.ID,
+				UserID:   memberID,
+				Role:     models.ChatMemberRoleMember,
+				IsActive: true,
+			}
+			h.db.DB.Create(&member)
+		}
+	}
+
+	// Загружаем созданный чат с участниками
+	err = h.db.DB.Preload("Creator").
+		Preload("Members.User").
+		First(&chat, chat.ID).Error
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch created chat"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"chat": chat})
 }
 
+// GetChat возвращает информацию о конкретном чате
 func (h *ChatHandler) GetChat(c *gin.Context) {
-	// TODO: Implement get chat by ID
-	c.JSON(http.StatusOK, gin.H{"chat": models.Chat{}})
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	userUUID, err := uuid.Parse(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	chatID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid chat ID"})
+		return
+	}
+
+	// Проверяем, является ли пользователь участником чата
+	var member models.ChatMember
+	err = h.db.DB.Where("chat_id = ? AND user_id = ? AND is_active = ?", chatID, userUUID, true).
+		First(&member).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this chat"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check chat access"})
+		}
+		return
+	}
+
+	// Загружаем чат с полной информацией
+	var chat models.Chat
+	err = h.db.DB.Preload("Creator").
+		Preload("Members.User").
+		Preload("Messages.Sender").
+		Preload("Messages.Reactions").
+		Where("id = ? AND is_active = ?", chatID, true).
+		First(&chat).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Chat not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch chat"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"chat": chat})
 }
 
+// UpdateChat обновляет информацию о чате
 func (h *ChatHandler) UpdateChat(c *gin.Context) {
-	// TODO: Implement update chat
-	c.JSON(http.StatusOK, gin.H{"message": "Chat updated"})
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	userUUID, err := uuid.Parse(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	chatID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid chat ID"})
+		return
+	}
+
+	var request struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Avatar      string `json:"avatar"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		return
+	}
+
+	// Проверяем права доступа (только админ или создатель может редактировать)
+	var member models.ChatMember
+	err = h.db.DB.Where("chat_id = ? AND user_id = ? AND is_active = ?", chatID, userUUID, true).
+		First(&member).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this chat"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check chat access"})
+		}
+		return
+	}
+
+	// Проверяем роль пользователя
+	if member.Role != models.ChatMemberRoleAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only admins can update chat"})
+		return
+	}
+
+	// Обновляем чат
+	updates := make(map[string]interface{})
+	if request.Name != "" {
+		updates["name"] = request.Name
+	}
+	if request.Description != "" {
+		updates["description"] = request.Description
+	}
+	if request.Avatar != "" {
+		updates["avatar"] = request.Avatar
+	}
+
+	err = h.db.DB.Model(&models.Chat{}).Where("id = ?", chatID).Updates(updates).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update chat"})
+		return
+	}
+
+	// Загружаем обновленный чат
+	var chat models.Chat
+	err = h.db.DB.Preload("Creator").
+		Preload("Members.User").
+		First(&chat, chatID).Error
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch updated chat"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"chat": chat})
 }
 
+// DeleteChat удаляет чат (деактивирует)
 func (h *ChatHandler) DeleteChat(c *gin.Context) {
-	// TODO: Implement delete chat
-	c.JSON(http.StatusOK, gin.H{"message": "Chat deleted"})
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	userUUID, err := uuid.Parse(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	chatID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid chat ID"})
+		return
+	}
+
+	// Проверяем права доступа (только создатель может удалить чат)
+	var chat models.Chat
+	err = h.db.DB.Where("id = ? AND created_by = ? AND is_active = ?", chatID, userUUID, true).
+		First(&chat).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Only chat creator can delete the chat"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check chat access"})
+		}
+		return
+	}
+
+	// Деактивируем чат
+	err = h.db.DB.Model(&models.Chat{}).Where("id = ?", chatID).Update("is_active", false).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete chat"})
+		return
+	}
+
+	// Деактивируем всех участников
+	err = h.db.DB.Model(&models.ChatMember{}).Where("chat_id = ?", chatID).Update("is_active", false).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to deactivate chat members"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Chat deleted successfully"})
 }
 
+// AddChatMember добавляет нового участника в чат
 func (h *ChatHandler) AddChatMember(c *gin.Context) {
-	// TODO: Implement add chat member
-	c.JSON(http.StatusOK, gin.H{"message": "Member added"})
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	userUUID, err := uuid.Parse(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	chatID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid chat ID"})
+		return
+	}
+
+	var request struct {
+		UserID uuid.UUID `json:"user_id" binding:"required"`
+		Role   models.ChatMemberRole `json:"role"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		return
+	}
+
+	// Проверяем права доступа (только админ может добавлять участников)
+	var member models.ChatMember
+	err = h.db.DB.Where("chat_id = ? AND user_id = ? AND is_active = ?", chatID, userUUID, true).
+		First(&member).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this chat"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check chat access"})
+		}
+		return
+	}
+
+	if member.Role != models.ChatMemberRoleAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only admins can add members"})
+		return
+	}
+
+	// Проверяем, не является ли пользователь уже участником
+	var existingMember models.ChatMember
+	err = h.db.DB.Where("chat_id = ? AND user_id = ?", chatID, request.UserID).
+		First(&existingMember).Error
+
+	if err == nil {
+		// Пользователь уже участник, активируем его
+		err = h.db.DB.Model(&existingMember).Updates(map[string]interface{}{
+			"is_active": true,
+			"role":      request.Role,
+			"left_at":   nil,
+		}).Error
+	} else if err == gorm.ErrRecordNotFound {
+		// Создаем нового участника
+		newMember := models.ChatMember{
+			ChatID:   chatID,
+			UserID:   request.UserID,
+			Role:     request.Role,
+			IsActive: true,
+		}
+		err = h.db.DB.Create(&newMember).Error
+	} else {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing member"})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add member to chat"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Member added successfully"})
 }
 
+// RemoveChatMember удаляет участника из чата
 func (h *ChatHandler) RemoveChatMember(c *gin.Context) {
-	// TODO: Implement remove chat member
-	c.JSON(http.StatusOK, gin.H{"message": "Member removed"})
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	userUUID, err := uuid.Parse(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	chatID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid chat ID"})
+		return
+	}
+
+	memberID, err := uuid.Parse(c.Param("member_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid member ID"})
+		return
+	}
+
+	// Проверяем права доступа (только админ может удалять участников)
+	var adminMember models.ChatMember
+	err = h.db.DB.Where("chat_id = ? AND user_id = ? AND is_active = ?", chatID, userUUID, true).
+		First(&adminMember).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this chat"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check chat access"})
+		}
+		return
+	}
+
+	if adminMember.Role != models.ChatMemberRoleAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only admins can remove members"})
+		return
+	}
+
+	// Проверяем, что удаляемый участник не является создателем чата
+	var chat models.Chat
+	err = h.db.DB.Where("id = ?", chatID).First(&chat).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch chat"})
+		return
+	}
+
+	if chat.CreatedBy == memberID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Cannot remove chat creator"})
+		return
+	}
+
+	// Удаляем участника (деактивируем)
+	err = h.db.DB.Model(&models.ChatMember{}).
+		Where("chat_id = ? AND user_id = ?", chatID, memberID).
+		Updates(map[string]interface{}{
+			"is_active": false,
+			"left_at":   gorm.Expr("NOW()"),
+		}).Error
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove member from chat"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Member removed successfully"})
 }
