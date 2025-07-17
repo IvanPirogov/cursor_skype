@@ -675,3 +675,28 @@
 #participants-group.show {
     display: block !important;
 }
+
+/* Вкладки (табы) в сайдбаре */
+.sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid #e0e0e0;
+    background: #fafbfc;
+}
+.sidebar-tabs .tab-btn {
+    flex: 1;
+    padding: 10px 0;
+    background: none;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    border-bottom: 2px solid transparent;
+}
+.sidebar-tabs .tab-btn.active {
+    color: #007bff;
+    background: #e3f2fd;
+    border-bottom: 2px solid #007bff;
+}

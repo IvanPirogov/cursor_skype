@@ -9,7 +9,9 @@ class ChatController {
         this.websocket = null;
         this.typingTimeout = null;
         this.isTyping = false;
-        
+        // Для "Твои контакты"
+        this.myContacts = new Map(); // id -> contact
+        this.selectedContactIds = new Set();
         this.initializeElements();
         this.initializeEventListeners();
         this.checkAuthentication();
@@ -56,6 +58,11 @@ class ChatController {
         
         // Индикатор печати
         this.typingIndicator = document.getElementById('typing-indicator');
+        this.myContactItems = document.getElementById('my-contact-items');
+        this.tabChatsBtn = document.getElementById('tab-chats');
+        this.tabMyContactsBtn = document.getElementById('tab-my-contacts');
+        this.chatListBlock = document.getElementById('chat-list-block');
+        this.myContactsListBlock = document.getElementById('my-contacts-list-block');
     }
 
     initializeEventListeners() {
@@ -92,6 +99,10 @@ class ChatController {
         this.logoutBtn.addEventListener('click', () => this.logout());
         this.voiceCallBtn.addEventListener('click', () => this.initiateCall('voice'));
         this.videoCallBtn.addEventListener('click', () => this.initiateCall('video'));
+
+        // Вкладки (табы)
+        this.tabChatsBtn.addEventListener('click', () => this.showTab('chats'));
+        this.tabMyContactsBtn.addEventListener('click', () => this.showTab('myContacts'));
 
         // Модальные окна
         this.setupModalHandlers();
@@ -220,11 +231,27 @@ class ChatController {
 
     renderChats(chats) {
         this.chatItems.innerHTML = '';
+        // Собираем контакты с которыми есть переписка
+        const myContactsMap = new Map();
         chats.forEach(chat => {
             this.chats.set(chat.id, chat);
+            // Добавляем всех участников кроме себя в myContacts
+            if (Array.isArray(chat.members)) {
+                chat.members.forEach(m => {
+                    if (m.user && m.user.id !== this.currentUser?.id) {
+                        myContactsMap.set(m.user.id, m.user);
+                    }
+                });
+            }
             const chatElement = this.createChatElement(chat);
             this.chatItems.appendChild(chatElement);
         });
+        // Обновляем myContacts
+        this.myContacts = myContactsMap;
+        // Если открыта вкладка "Твои контакты" — обновить её
+        if (this.tabMyContactsBtn.classList.contains('active')) {
+            this.renderMyContacts();
+        }
     }
 
     createChatElement(chat) {
@@ -699,6 +726,44 @@ class ChatController {
             this.websocket.close();
         }
         AuthManager.logout();
+    }
+
+    showTab(tab) {
+        if (tab === 'chats') {
+            this.tabChatsBtn.classList.add('active');
+            this.tabMyContactsBtn.classList.remove('active');
+            this.chatListBlock.style.display = '';
+            this.myContactsListBlock.style.display = 'none';
+        } else {
+            this.tabChatsBtn.classList.remove('active');
+            this.tabMyContactsBtn.classList.add('active');
+            this.chatListBlock.style.display = 'none';
+            this.myContactsListBlock.style.display = '';
+            this.renderMyContacts();
+        }
+    }
+
+    renderMyContacts() {
+        this.myContactItems.innerHTML = '';
+        // Собираем всех: с кем есть чат + кого выбрали вручную
+        const allContacts = new Map([...this.myContacts]);
+        this.selectedContactIds.forEach(id => {
+            if (this.contacts.has(id)) {
+                allContacts.set(id, this.contacts.get(id));
+            }
+        });
+        allContacts.forEach(contact => {
+            const div = document.createElement('div');
+            div.className = 'contact-item';
+            div.dataset.contactId = contact.id;
+            const avatar = this.getAvatarInitials(contact.nickname || contact.username || contact.first_name || contact.username);
+            div.innerHTML = `
+                <div class="contact-avatar">${avatar}</div>
+                <div class="contact-name">${contact.nickname || contact.username || contact.first_name || contact.username}</div>
+            `;
+            div.addEventListener('click', () => this.startPrivateChat(contact.id));
+            this.myContactItems.appendChild(div);
+        });
     }
 
     // Утилиты
