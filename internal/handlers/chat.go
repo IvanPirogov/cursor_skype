@@ -150,8 +150,8 @@ func (h *ChatHandler) CreateChat(c *gin.Context) {
 		return
 	}
 
-	// Добавляем других участников только для приватных и групповых чатов
-	if chatType != models.ChatTypePublic {
+	// Добавляем других участников только для групповых чатов
+	if chatType == models.ChatTypeGroup {
 		for _, memberID := range request.MemberIDs {
 			if memberID != userUUID {
 				member := models.ChatMember{

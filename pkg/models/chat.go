@@ -9,7 +9,6 @@ import (
 type ChatType string
 
 const (
-	ChatTypePrivate ChatType = "private"
 	ChatTypeGroup   ChatType = "group"
 	ChatTypePublic  ChatType = "public"
 )
@@ -18,7 +17,7 @@ type Chat struct {
 	ID          uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	Type        ChatType  `json:"type" gorm:"default:'private'"`
+	Type        ChatType  `json:"type" gorm:"default:'public'"`
 	Avatar      string    `json:"avatar"`
 	CreatedBy   uuid.UUID `json:"created_by" gorm:"type:uuid;not null"`
 	IsActive    bool      `json:"is_active" gorm:"default:true"`
