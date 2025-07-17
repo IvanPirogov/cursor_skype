@@ -905,59 +905,37 @@ class ChatController {
             (contactUser.nickname || contactUser.username || '').toLowerCase()
         ].sort();
         const chatName = nicknames.join('_');
-        // Ищем приватный чат с этим пользователем по имени
-        let privateChat = null;
-        for (let chat of this.chats.values()) {
-            if (
-                chat.type === 'private' &&
-                chat.name === chatName &&
-                Array.isArray(chat.members) &&
-                chat.members.length === 2 &&
-                chat.members.some(m => m.user && m.user.id === contactUser.id) &&
-                chat.members.some(m => m.user && m.user.id === this.currentUser.id)
-            ) {
-                privateChat = chat;
-                break;
+        // Всегда делаем запрос на сервер для получения истории приватного чата
+        try {
+            // Предполагается, что api.getPrivateChatHistory возвращает {chat, messages}
+            const response = await api.getPrivateChatHistory({ userId: contactUser.id });
+            if (response && response.chat && response.chat.id) {
+                this.chats.set(response.chat.id, response.chat);
+                this.currentChat = response.chat;
+                this.renderMessages(response.messages || []);
+                this.showSelectedContactInfo();
+                return;
             }
+        } catch (e) {
+            // ignore
         }
-        if (privateChat) {
-            this.selectChat(privateChat.id);
-        } else {
-            // Пробуем найти чат на сервере по имени
-            try {
-                const response = await api.getChats();
-                const found = (response.chats || []).find(chat =>
-                    chat.type === 'private' &&
-                    chat.name === chatName &&
-                    Array.isArray(chat.members) &&
-                    chat.members.length === 2 &&
-                    chat.members.some(m => m.user && m.user.id === contactUser.id) &&
-                    chat.members.some(m => m.user && m.user.id === this.currentUser.id)
-                );
-                if (found) {
-                    this.chats.set(found.id, found);
-                    this.selectChat(found.id);
-                    return;
-                }
-            } catch (e) {
-                // ignore
-            }
-            // Если не найден — создаём временный чат и показываем пустую историю
-            const tempChatId = 'temp-' + contactUser.id;
-            const tempChat = {
-                id: tempChatId,
-                type: 'private',
-                name: chatName,
-                members: [
-                    { user: this.currentUser },
-                    { user: contactUser }
-                ],
-                messages: [],
-                isTemporary: true
-            };
-            this.chats.set(tempChatId, tempChat);
-            this.selectChat(tempChatId);
-        }
+        // Если не найден — создаём временный чат и показываем пустую историю
+        const tempChatId = 'temp-' + contactUser.id;
+        const tempChat = {
+            id: tempChatId,
+            type: 'private',
+            name: chatName,
+            members: [
+                { user: this.currentUser },
+                { user: contactUser }
+            ],
+            messages: [],
+            isTemporary: true
+        };
+        this.chats.set(tempChatId, tempChat);
+        this.currentChat = tempChat;
+        this.renderMessages([]);
+        this.showSelectedContactInfo();
     }
 
     // Утилиты
