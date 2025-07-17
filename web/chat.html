@@ -25,9 +25,6 @@
                     </div>
                 </div>
                 <div class="sidebar-actions">
-                    <button class="btn-icon" id="new-chat-btn" title="Новый чат">
-                        <i class="fas fa-plus"></i>
-                    </button>
                     <button class="btn-icon" id="settings-btn" title="Настройки">
                         <i class="fas fa-cog"></i>
                     </button>
@@ -54,7 +51,7 @@
                     <h3>Чаты</h3>
                     <span class="online-count" id="online-count">0 онлайн</span>
                     <button class="btn-icon" id="new-chat-btn" title="Новый чат">
-                        <i class="fas fa-plus"></i>
+                        <i class="fa-solid fa-user-group"></i>
                     </button>
                 </div>
                 <div id="chat-items" class="chat-items">
@@ -133,7 +130,7 @@
     <!-- Модальные окна -->
     <div id="modal-overlay" class="modal-overlay hidden">
         <!-- Модальное окно создания чата -->
-        <div id="new-chat-modal" class="modal">
+        <div id="new-chat-modal" class="modal hidden">
             <div class="modal-header">
                 <h3>Новый чат</h3>
                 <button class="btn-close" id="close-new-chat-modal">
@@ -165,7 +162,7 @@
         </div>
 
         <!-- Модальное окно добавления контакта -->
-        <div id="add-contact-modal" class="modal">
+        <div id="add-contact-modal" class="modal hidden">
             <div class="modal-header">
                 <h3>Добавить контакт</h3>
                 <button class="btn-close" id="close-add-contact-modal">
