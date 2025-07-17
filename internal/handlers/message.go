@@ -63,7 +63,8 @@ func (h *MessageHandler) GetMessages(c *gin.Context) {
 	if chatIDStr != "" {
 		chatID, err := uuid.Parse(chatIDStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid chat ID"})
+			// Если chat_id невалидный (например, временный), возвращаем пустой список сообщений
+			c.JSON(http.StatusOK, gin.H{"messages": []models.Message{}})
 			return
 		}
 
