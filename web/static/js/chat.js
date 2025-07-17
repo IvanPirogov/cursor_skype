@@ -803,10 +803,12 @@ class ChatController {
             const div = document.createElement('div');
             div.className = 'contact-item';
             div.dataset.contactId = contact.id;
-            const avatar = this.getAvatarInitials(contact.nickname || contact.username || contact.first_name || contact.username);
+            const avatar = this.getAvatarInitials(
+                contact.nickname || contact.username || contact.first_name || contact.last_name || 'User'
+            );
             div.innerHTML = `
                 <div class="contact-avatar">${avatar}</div>
-                <div class="contact-name">${contact.nickname || contact.username || contact.first_name || contact.username}</div>
+                <div class="contact-name">${contact.nickname || contact.username || contact.first_name || contact.last_name || 'User'}</div>
             `;
             div.addEventListener('click', () => this.startPrivateChat(contact.id));
             this.myContactItems.appendChild(div);
@@ -815,6 +817,7 @@ class ChatController {
 
     // Утилиты
     getAvatarInitials(name) {
+        if (!name || typeof name !== 'string') return '?';
         return name.split(' ').map(n => n[0]).join('').toUpperCase().substr(0, 2);
     }
 
