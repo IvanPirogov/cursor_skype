@@ -3,13 +3,14 @@ package router
 import (
 	"messenger/internal/auth"
 	"messenger/internal/config"
+	"messenger/internal/db"
 	"messenger/internal/handlers"
 	"messenger/internal/middleware"
 	"messenger/internal/websocket"
 	"github.com/gin-gonic/gin"
 )
 
-func Setup(authService *auth.Service, hub *websocket.Hub, cfg *config.Config) *gin.Engine {
+func Setup(authService *auth.Service, hub *websocket.Hub, cfg *config.Config, database *db.Database) *gin.Engine {
 	if cfg.Server.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -34,9 +35,9 @@ func Setup(authService *auth.Service, hub *websocket.Hub, cfg *config.Config) *g
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
-	userHandler := handlers.NewUserHandler()
-	chatHandler := handlers.NewChatHandler()
-	messageHandler := handlers.NewMessageHandler()
+	userHandler := handlers.NewUserHandler(database)
+	chatHandler := handlers.NewChatHandler(database)
+	messageHandler := handlers.NewMessageHandler(database)
 	contactHandler := handlers.NewContactHandler()
 	callHandler := handlers.NewCallHandler()
 	uploadHandler := handlers.NewUploadHandler()

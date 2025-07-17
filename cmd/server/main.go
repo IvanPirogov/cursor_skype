@@ -43,7 +43,7 @@ func main() {
 	go hub.Run()
 
 	// Setup router
-	r := router.Setup(authService, hub, cfg)
+	r := router.Setup(authService, hub, cfg, database)
 
 	// Start server
 	server := &http.Server{

@@ -71,18 +71,22 @@ class WebSocketClient {
     }
 
     handleMessage(message) {
+        console.log('WebSocket message received:', message);
         const { type, data, user_id, timestamp } = message;
         
         switch (type) {
             case 'chat':
+                console.log('Chat message:', data);
                 this.emit('message', { ...data, user_id, timestamp });
                 break;
                 
             case 'user_status':
+                console.log('User status:', data);
                 this.emit('user_status', data);
                 break;
                 
             case 'typing':
+                console.log('Typing indicator:', data);
                 this.emit('typing', { ...data, user_id });
                 break;
                 
@@ -103,6 +107,7 @@ class WebSocketClient {
                 break;
                 
             case 'new_message':
+                console.log('New message:', data);
                 this.emit('new_message', { ...data, user_id, timestamp });
                 break;
                 
