@@ -800,16 +800,17 @@ class ChatController {
         this.myContactItems.innerHTML = '';
         // Показываем всех контактов из this.contacts
         this.contacts.forEach(contact => {
+            const c = contact.contact || {};
             const div = document.createElement('div');
             div.className = 'contact-item';
             div.dataset.contactId = contact.id;
             const avatar = this.getAvatarInitials(
-                contact.nickname || contact.username || contact.first_name || contact.last_name || 'User'
+                c.nickname || c.username || c.first_name || c.last_name || 'User'
             );
             // Формируем отображаемое имя
-            const firstName = contact.first_name || '';
-            const lastName = contact.last_name || '';
-            const username = contact.username || '';
+            const firstName = c.first_name || '';
+            const lastName = c.last_name || '';
+            const username = c.username || '';
             const displayName = `${firstName} ${lastName}`.trim() + (username ? ` (${username})` : '');
             div.innerHTML = `
                 <div class="contact-avatar">${avatar}</div>
@@ -821,10 +822,10 @@ class ChatController {
             let tooltipDiv;
             div.addEventListener('mouseenter', () => {
                 tooltipTimeout = setTimeout(() => {
-                    if (!contact.email) return;
+                    if (!c.email) return;
                     tooltipDiv = document.createElement('div');
                     tooltipDiv.className = 'contact-tooltip';
-                    tooltipDiv.textContent = contact.email;
+                    tooltipDiv.textContent = c.email;
                     tooltipDiv.style.position = 'absolute';
                     tooltipDiv.style.background = '#222';
                     tooltipDiv.style.color = '#fff';
