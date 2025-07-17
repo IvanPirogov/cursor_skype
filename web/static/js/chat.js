@@ -579,9 +579,8 @@ class ChatController {
         this.modalOverlay.classList.remove('hidden');
         this.addContactModal.classList.remove('hidden');
         this.addContactModal.style.display = 'block';
-        // Очищаем поля при открытии
-        document.getElementById('contact-username').value = '';
-        document.getElementById('contact-nickname').value = '';
+        // Очищаем поле при открытии
+        document.getElementById('contact-userquery').value = '';
         // Новый функционал: поиск и выбор пользователя
         this.loadAndShowUserSearchList();
     }
@@ -596,12 +595,13 @@ class ChatController {
             }
             this.renderUserSearchList(this.allUsers);
             // Поиск по вводу
-            const usernameInput = document.getElementById('contact-username');
-            usernameInput.addEventListener('input', () => {
-                const val = usernameInput.value.toLowerCase();
+            const queryInput = document.getElementById('contact-userquery');
+            queryInput.addEventListener('input', () => {
+                const val = queryInput.value.toLowerCase();
                 const filtered = this.allUsers.filter(u =>
                     u.username.toLowerCase().includes(val) ||
-                    (u.nickname && u.nickname.toLowerCase().includes(val))
+                    (u.nickname && u.nickname.toLowerCase().includes(val)) ||
+                    (u.email && u.email.toLowerCase().includes(val))
                 );
                 this.renderUserSearchList(filtered);
             });
@@ -618,13 +618,13 @@ class ChatController {
         }
         userListDiv.innerHTML = users.map(u =>
             `<div class="user-search-item" data-username="${u.username}">
-                <span class="user-search-name">${u.nickname ? u.nickname + ' (' + u.username + ')' : u.username}</span>
+                <span class="user-search-name">${u.nickname ? u.nickname + ' (' + u.username + ')' : u.username} &lt;${u.email}&gt;</span>
             </div>`
         ).join('');
         // Клик по пользователю
         userListDiv.querySelectorAll('.user-search-item').forEach(item => {
             item.addEventListener('click', () => {
-                document.getElementById('contact-username').value = item.dataset.username;
+                document.getElementById('contact-userquery').value = item.dataset.username;
             });
         });
     }
@@ -670,20 +670,15 @@ class ChatController {
     }
 
     async addNewContact() {
-        const username = document.getElementById('contact-username').value.trim();
-        const nickname = document.getElementById('contact-nickname').value.trim();
-        
-        if (!username) {
+        const userQuery = document.getElementById('contact-userquery').value.trim();
+        if (!userQuery) {
             notifications.error('Ошибка', 'Введите имя пользователя');
             return;
         }
-        
         try {
             const result = await api.addContact({
-                username: username,
-                nickname: nickname
+                username: userQuery
             });
-            
             notifications.success('Контакт добавлен', 'Новый контакт успешно добавлен');
             this.hideModals();
             this.loadInitialData();
