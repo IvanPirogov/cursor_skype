@@ -9,9 +9,9 @@ class ChatController {
         this.websocket = null;
         this.typingTimeout = null;
         this.isTyping = false;
-        // Для "Твои контакты"
-        this.myContacts = new Map(); // id -> contact
-        this.selectedContactIds = new Set();
+
+        this.myContacts = new Map();
+        this.selectedContactIds = new Set();        
         this.initializeElements();
         this.initializeEventListeners();
         this.checkAuthentication();
@@ -29,7 +29,7 @@ class ChatController {
         
         // Элементы чата
         this.chatItems = document.getElementById('chat-items');
-        this.contactItems = document.getElementById('contact-items');
+        // this.contactItems = document.getElementById('contact-items');
         this.messages = document.getElementById('messages');
         this.chatTitle = document.getElementById('chat-title');
         this.chatStatus = document.getElementById('chat-status');
@@ -100,7 +100,7 @@ class ChatController {
         this.voiceCallBtn.addEventListener('click', () => this.initiateCall('voice'));
         this.videoCallBtn.addEventListener('click', () => this.initiateCall('video'));
 
-        // Вкладки (табы)
+         // Вкладки (табы)
         this.tabChatsBtn.addEventListener('click', () => this.showTab('chats'));
         this.tabMyContactsBtn.addEventListener('click', () => this.showTab('myContacts'));
 
@@ -159,11 +159,8 @@ class ChatController {
         }
 
         try {
-            const user = await api.getCurrentUser();
-            console.log('Current user data from server:', user);
-            this.currentUser = user.user; // Извлекаем пользователя из объекта {user: {...}}
-            console.log('Current user set to:', this.currentUser);
-            console.log('Current user ID:', this.currentUser?.id);
+           const user = await api.getCurrentUser();
+            this.currentUser = user.user;
             this.updateUserInfo();
             this.initializeWebSocket();
             this.loadInitialData();
@@ -214,12 +211,12 @@ class ChatController {
     async loadInitialData() {
         try {
             // Загрузка чатов
-            const chats = await api.getChats();
-            this.renderChats(chats || []);
+            const chatsResponse = await api.getChats();
+            this.renderChats(chatsResponse.chats || []);
 
             // Загрузка контактов
-            const contacts = await api.getContacts();
-            this.renderContacts(contacts || []);
+            const contactsResponse = await api.getContacts();
+            // this.renderContacts(contactsResponse.contacts || []);
 
             // Обновление счетчика онлайн
             this.updateOnlineCount();
@@ -230,7 +227,7 @@ class ChatController {
     }
 
     renderChats(chats) {
-        this.chatItems.innerHTML = '';
+       this.chatItems.innerHTML = '';
         // Собираем контакты с которыми есть переписка
         const myContactsMap = new Map();
         chats.forEach(chat => {
@@ -289,14 +286,14 @@ class ChatController {
         return div;
     }
 
-    renderContacts(contacts) {
-        this.contactItems.innerHTML = '';
-        contacts.forEach(contact => {
-            this.contacts.set(contact.id, contact);
-            const contactElement = this.createContactElement(contact);
-            this.contactItems.appendChild(contactElement);
-        });
-    }
+    // renderContacts(contacts) {
+    //     this.contactItems.innerHTML = '';
+    //     contacts.forEach(contact => {
+    //         this.contacts.set(contact.id, contact);
+    //         const contactElement = this.createContactElement(contact);
+    //         this.contactItems.appendChild(contactElement);
+    //     });
+    // }
 
     createContactElement(contact) {
         const div = document.createElement('div');
@@ -317,7 +314,6 @@ class ChatController {
     }
 
     async selectChat(chatId) {
-        console.log('Selecting chat:', chatId);
         
         // Убираем выделение с предыдущего чата
         document.querySelectorAll('.chat-item').forEach(item => {
@@ -336,11 +332,9 @@ class ChatController {
             return;
         }
         
-        console.log('Current chat set to:', this.currentChat);
-        
         // Обновляем заголовок чата
         this.chatTitle.textContent = this.currentChat.name || 'Unknown';
-        
+        // this.chatStatus.textContent = this.currentChat.is_online ? 'Онлайн' : 'Офлайн';
         // Устанавливаем статус в зависимости от типа чата
         if (this.currentChat.type === 'public') {
             this.chatStatus.textContent = 'Публичный канал';
@@ -354,10 +348,8 @@ class ChatController {
         
         // Загружаем сообщения
         try {
-            console.log('Loading messages for chat:', chatId);
-            const messages = await api.getMessages(chatId);
-            console.log('Messages response:', messages);
-            this.renderMessages(messages || []);
+            const messagesResponse = await api.getMessages(chatId);
+            this.renderMessages(messagesResponse.messages || []);
         } catch (error) {
             console.error('Failed to load messages:', error);
             notifications.error('Ошибка', 'Не удалось загрузить сообщения');
@@ -365,7 +357,6 @@ class ChatController {
     }
 
     renderMessages(messages) {
-        console.log('Rendering messages:', messages);
         this.messages.innerHTML = '';
         
         if (messages.length === 0) {
@@ -374,7 +365,6 @@ class ChatController {
         }
         
         messages.forEach(message => {
-            console.log('Creating message element for:', message);
             const messageElement = this.createMessageElement(message);
             this.messages.appendChild(messageElement);
         });
@@ -385,26 +375,23 @@ class ChatController {
 
     createMessageElement(message) {
         const isOwnMessage = message.sender_id === this.currentUser.id;
-        console.log('Message status:', message.status, 'for message:', message.id);
         const div = document.createElement('div');
         div.className = `message ${isOwnMessage ? 'own' : ''}`;
         div.dataset.messageId = message.id;
         
         const time = this.formatTime(message.created_at);
-        
-        if (isOwnMessage) {
-            // Сообщение автора - отображаем справа без имени отправителя
-            const statusText = this.getMessageStatus(message.status);
-            console.log('Creating own message with status:', statusText);
+    
+        if (isOwnMessage && (window.innerWidth < 768)) {
+            // Сообщение автора на мобильном устройстве - отображаем справа без имени отправителя
             div.innerHTML = `
                 <div class="message-content">
+                    <p class="message-time">${time}</p>
                     <div class="message-bubble">
                         <p class="message-text">${this.escapeHtml(message.content)}</p>
                         ${message.files ? this.renderMessageFiles(message.files) : ''}
                     </div>
                     <div class="message-info">
-                        <span class="message-time">${time}</span>
-                        <div class="message-status">${statusText}</div>
+                        <div class="message-status">${this.getMessageStatus(message.status)}</div>
                     </div>
                 </div>
             `;
@@ -414,7 +401,6 @@ class ChatController {
             let senderInitials = 'U';
             
             if (message.sender) {
-                console.log('Message has sender object:', message.sender);
                 // Если есть объект sender с полной информацией
                 senderName = message.sender.username || message.sender.first_name || 'Unknown';
                 if (message.sender.first_name && message.sender.last_name) {
@@ -424,17 +410,13 @@ class ChatController {
                 }
                 senderInitials = this.getAvatarInitials(senderName);
             } else if (message.sender_name) {
-                console.log('Message has sender_name:', message.sender_name);
                 // Fallback для старых сообщений
                 senderName = message.sender_name;
                 senderInitials = this.getAvatarInitials(senderName);
             } else {
-                console.log('No sender information found in message');
                 // Если нет информации об отправителе
                 senderInitials = this.getAvatarInitials('User');
             }
-            
-            console.log('Final sender name:', senderName);
             
             div.innerHTML = `
                 <div class="message-avatar">
@@ -486,21 +468,18 @@ class ChatController {
         
         // Сначала отправляем через API для сохранения в базе
         try {
-            const message = await api.sendMessage({
+            const response = await api.sendMessage({
                 chat_id: this.currentChat.id,
                 content: content,
                 type: 'text'
             });
             
-            console.log('Message sent, response:', message);
-            console.log('Message status from server:', message.status);
-            
             // Если сообщение успешно сохранено, отправляем через WebSocket
-            if (message) {
+            if (response && response.message) {
                 this.websocket.sendChatMessage(this.currentChat.id, content);
                 
                 // Добавляем сообщение в UI
-                const messageElement = this.createMessageElement(message);
+                const messageElement = this.createMessageElement(response.message);
                 this.messages.appendChild(messageElement);
                 this.scrollToBottom();
                 
@@ -514,18 +493,11 @@ class ChatController {
     }
 
     handleNewMessage(data) {
-        console.log('Handling new message:', data);
-        console.log('Current chat:', this.currentChat);
-        
         if (data.chat_id === this.currentChat?.id) {
-            console.log('Adding message to current chat');
             const messageElement = this.createMessageElement(data);
             this.messages.appendChild(messageElement);
             this.scrollToBottom();
-        } else {
-            console.log('Message not for current chat');
-        }
-        
+        } 
         // Обновляем список чатов
         this.updateChatLastMessage(data.chat_id, data.content);
     }
@@ -575,6 +547,7 @@ class ChatController {
 
     showNewChatModal() {
         this.modalOverlay.classList.remove('hidden');
+        this.newChatModal.classList.remove('hidden');
         this.newChatModal.style.display = 'block';
         // Устанавливаем публичный чат по умолчанию и скрываем участников
         document.getElementById('chat-type').value = 'public';
@@ -604,6 +577,7 @@ class ChatController {
 
     showAddContactModal() {
         this.modalOverlay.classList.remove('hidden');
+        this.addContactModal.classList.remove('hidden');
         this.addContactModal.style.display = 'block';
         // Очищаем поля при открытии
         document.getElementById('contact-username').value = '';
@@ -612,6 +586,8 @@ class ChatController {
 
     hideModals() {
         this.modalOverlay.classList.add('hidden');
+        this.addContactModal.classList.add('hidden');
+        this.newChatModal.classList.add('hidden');
         this.newChatModal.style.display = 'none';
         this.addContactModal.style.display = 'none';
     }
@@ -637,7 +613,7 @@ class ChatController {
                 chatData.member_ids = participants.split(',').map(p => p.trim()).filter(p => p);
             }
             
-            const chat = await api.createChat(chatData);
+            const result = await api.createChat(chatData);
             
             notifications.success('Чат создан', 'Новый чат успешно создан');
             this.hideModals();
@@ -658,7 +634,7 @@ class ChatController {
         }
         
         try {
-            const contact = await api.addContact({
+            const result = await api.addContact({
                 username: username,
                 nickname: nickname
             });
@@ -725,7 +701,11 @@ class ChatController {
         if (this.websocket) {
             this.websocket.close();
         }
-        AuthManager.logout();
+        // AuthManager.logout();
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_info');
+        api.setToken(null);
+        window.location.href = '/';
     }
 
     showTab(tab) {
@@ -773,7 +753,26 @@ class ChatController {
 
     formatTime(timestamp) {
         const date = new Date(timestamp);
-        return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        const now = new Date();
+
+        const pad = (n) => n.toString().padStart(2, '0');
+
+        const isToday =
+            date.getFullYear() === now.getFullYear() &&
+            date.getMonth() === now.getMonth() &&
+            date.getDate() === now.getDate();
+        
+        const hours = pad(date.getHours());
+        const minutes = pad(date.getMinutes());
+
+        if (isToday) {
+            return `${hours}:${minutes}`;
+        } else {
+            const year = date.getFullYear();
+            const month = pad(date.getMonth() + 1);
+            const day = pad(date.getDate());
+            return `${year}-${month}-${day} ${hours}:${minutes}`;
+        }
     }
 
     formatFileSize(bytes) {
@@ -785,16 +784,13 @@ class ChatController {
     }
 
     getMessageStatus(status) {
-        console.log('Getting status for:', status);
         const statuses = {
             'sent': 'Отправлено',
             'delivered': 'Доставлено',
             'read': 'Прочитано',
             'failed': 'Ошибка'
         };
-        const result = statuses[status] || 'Неизвестно';
-        console.log('Status result:', result);
-        return result;
+        return statuses[status] || 'Неизвестно';
     }
 
     escapeHtml(text) {
