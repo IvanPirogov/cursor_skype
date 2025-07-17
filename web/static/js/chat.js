@@ -233,9 +233,16 @@ class ChatController {
         div.dataset.chatId = chat.id;
         
         const avatar = this.getAvatarInitials(chat.name || 'Chat');
-        const lastMessage = chat.last_message || 'Нет сообщений';
-        const lastTime = chat.last_message_time ? this.formatTime(chat.last_message_time) : '';
         const unreadCount = chat.unread_count || 0;
+        // Подсчёт участников и онлайн
+        let membersCount = 0;
+        let onlineCount = 0;
+        if (Array.isArray(chat.members)) {
+            membersCount = chat.members.length;
+            onlineCount = chat.members.filter(m => m.user && m.user.status === 'online').length;
+        }
+        const membersInfo = `Участников: ${membersCount}, онлайн: ${onlineCount}`;
+        const lastTime = chat.last_message_time ? this.formatTime(chat.last_message_time) : '';
         
         div.innerHTML = `
             <div class="chat-avatar">
@@ -243,7 +250,7 @@ class ChatController {
             </div>
             <div class="chat-details">
                 <div class="chat-name">${chat.name || 'Unknown'}</div>
-                <div class="chat-last-message">${lastMessage}</div>
+                <div class="chat-last-message">${membersInfo}</div>
             </div>
             <div class="chat-meta">
                 <div class="chat-time">${lastTime}</div>
