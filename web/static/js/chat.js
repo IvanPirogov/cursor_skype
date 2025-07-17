@@ -149,7 +149,10 @@ class ChatController {
 
         try {
             const user = await api.getCurrentUser();
+            console.log('Current user data from server:', user);
             this.currentUser = user;
+            console.log('Current user set to:', this.currentUser);
+            console.log('Current user ID:', this.currentUser?.id);
             this.updateUserInfo();
             this.initializeWebSocket();
             this.loadInitialData();
@@ -200,12 +203,12 @@ class ChatController {
     async loadInitialData() {
         try {
             // Загрузка чатов
-            const chatsResponse = await api.getChats();
-            this.renderChats(chatsResponse.chats || []);
+            const chats = await api.getChats();
+            this.renderChats(chats || []);
 
             // Загрузка контактов
-            const contactsResponse = await api.getContacts();
-            this.renderContacts(contactsResponse.contacts || []);
+            const contacts = await api.getContacts();
+            this.renderContacts(contacts || []);
 
             // Обновление счетчика онлайн
             this.updateOnlineCount();
@@ -308,9 +311,9 @@ class ChatController {
         // Загружаем сообщения
         try {
             console.log('Loading messages for chat:', chatId);
-            const messagesResponse = await api.getMessages(chatId);
-            console.log('Messages response:', messagesResponse);
-            this.renderMessages(messagesResponse.messages || []);
+            const messages = await api.getMessages(chatId);
+            console.log('Messages response:', messages);
+            this.renderMessages(messages || []);
         } catch (error) {
             console.error('Failed to load messages:', error);
             notifications.error('Ошибка', 'Не удалось загрузить сообщения');
@@ -338,8 +341,13 @@ class ChatController {
 
     createMessageElement(message) {
         console.log('Creating message element with data:', message);
+        console.log('Current user ID:', this.currentUser?.id);
+        console.log('Message sender ID:', message.sender_id);
+        console.log('Message sender ID type:', typeof message.sender_id);
+        console.log('Current user ID type:', typeof this.currentUser?.id);
         
         const isOwnMessage = message.sender_id === this.currentUser.id;
+        console.log('Is own message:', isOwnMessage);
         const div = document.createElement('div');
         div.className = `message ${isOwnMessage ? 'own' : ''}`;
         div.dataset.messageId = message.id;
@@ -438,18 +446,18 @@ class ChatController {
         
         // Сначала отправляем через API для сохранения в базе
         try {
-            const response = await api.sendMessage({
+            const message = await api.sendMessage({
                 chat_id: this.currentChat.id,
                 content: content,
                 type: 'text'
             });
             
             // Если сообщение успешно сохранено, отправляем через WebSocket
-            if (response && response.message) {
+            if (message) {
                 this.websocket.sendChatMessage(this.currentChat.id, content);
                 
                 // Добавляем сообщение в UI
-                const messageElement = this.createMessageElement(response.message);
+                const messageElement = this.createMessageElement(message);
                 this.messages.appendChild(messageElement);
                 this.scrollToBottom();
                 
@@ -586,7 +594,7 @@ class ChatController {
                 chatData.member_ids = participants.split(',').map(p => p.trim()).filter(p => p);
             }
             
-            const result = await api.createChat(chatData);
+            const chat = await api.createChat(chatData);
             
             notifications.success('Чат создан', 'Новый чат успешно создан');
             this.hideModals();
@@ -607,7 +615,7 @@ class ChatController {
         }
         
         try {
-            const result = await api.addContact({
+            const contact = await api.addContact({
                 username: username,
                 nickname: nickname
             });

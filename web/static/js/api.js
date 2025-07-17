@@ -96,15 +96,18 @@ class ApiClient {
 
     // Методы пользователей
     async getCurrentUser() {
-        return this.get('/users/me');
+        const response = await this.get('/users/me');
+        return response.user;
     }
 
     async getUsers() {
-        return this.get('/users');
+        const response = await this.get('/users');
+        return response.users;
     }
 
     async getUser(userId) {
-        return this.get(`/users/${userId}`);
+        const response = await this.get(`/users/${userId}`);
+        return response.user;
     }
 
     async updateProfile(profileData) {
@@ -117,23 +120,28 @@ class ApiClient {
 
     // Методы чатов
     async getChats() {
-        return this.get('/chats');
+        const response = await this.get('/chats');
+        return response.chats;
     }
 
     async createChat(chatData) {
-        return this.post('/chats', chatData);
+        const response = await this.post('/chats', chatData);
+        return response.chat;
     }
 
     async getChat(chatId) {
-        return this.get(`/chats/${chatId}`);
+        const response = await this.get(`/chats/${chatId}`);
+        return response.chat;
     }
 
     async updateChat(chatId, chatData) {
-        return this.put(`/chats/${chatId}`, chatData);
+        const response = await this.put(`/chats/${chatId}`, chatData);
+        return response.chat;
     }
 
     async deleteChat(chatId) {
-        return this.delete(`/chats/${chatId}`);
+        const response = await this.delete(`/chats/${chatId}`);
+        return response;
     }
 
     async addChatMember(chatId, userId) {
@@ -146,36 +154,44 @@ class ApiClient {
 
     // Методы сообщений
     async getMessages(chatId, limit = 20, offset = 0) {
-        return this.get(`/messages?chat_id=${chatId}&limit=${limit}&offset=${offset}`);
+        const response = await this.get(`/messages?chat_id=${chatId}&limit=${limit}&offset=${offset}`);
+        return response.messages;
     }
 
     async sendMessage(messageData) {
-        return this.post('/messages', messageData);
+        const response = await this.post('/messages', messageData);
+        return response.message;
     }
 
     async getMessage(messageId) {
-        return this.get(`/messages/${messageId}`);
+        const response = await this.get(`/messages/${messageId}`);
+        return response.message;
     }
 
     async updateMessage(messageId, messageData) {
-        return this.put(`/messages/${messageId}`, messageData);
+        const response = await this.put(`/messages/${messageId}`, messageData);
+        return response.message;
     }
 
     async deleteMessage(messageId) {
-        return this.delete(`/messages/${messageId}`);
+        const response = await this.delete(`/messages/${messageId}`);
+        return response;
     }
 
     async markMessageAsRead(messageId) {
-        return this.post(`/messages/${messageId}/read`);
+        const response = await this.post(`/messages/${messageId}/read`);
+        return response;
     }
 
     // Методы контактов
     async getContacts() {
-        return this.get('/contacts');
+        const response = await this.get('/contacts');
+        return response.contacts;
     }
 
     async addContact(contactData) {
-        return this.post('/contacts', contactData);
+        const response = await this.post('/contacts', contactData);
+        return response.contact;
     }
 
     async removeContact(contactId) {
