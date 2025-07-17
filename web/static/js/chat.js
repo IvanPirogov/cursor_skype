@@ -341,6 +341,7 @@ class ChatController {
 
     createMessageElement(message) {
         const isOwnMessage = message.sender_id === this.currentUser.id;
+        console.log('Message status:', message.status, 'for message:', message.id);
         const div = document.createElement('div');
         div.className = `message ${isOwnMessage ? 'own' : ''}`;
         div.dataset.messageId = message.id;
@@ -349,6 +350,8 @@ class ChatController {
         
         if (isOwnMessage) {
             // Сообщение автора - отображаем справа без имени отправителя
+            const statusText = this.getMessageStatus(message.status);
+            console.log('Creating own message with status:', statusText);
             div.innerHTML = `
                 <div class="message-content">
                     <div class="message-bubble">
@@ -357,7 +360,7 @@ class ChatController {
                     </div>
                     <div class="message-info">
                         <span class="message-time">${time}</span>
-                        <div class="message-status">${this.getMessageStatus(message.status)}</div>
+                        <div class="message-status">${statusText}</div>
                     </div>
                 </div>
             `;
@@ -444,6 +447,9 @@ class ChatController {
                 content: content,
                 type: 'text'
             });
+            
+            console.log('Message sent, response:', message);
+            console.log('Message status from server:', message.status);
             
             // Если сообщение успешно сохранено, отправляем через WebSocket
             if (message) {
@@ -697,13 +703,16 @@ class ChatController {
     }
 
     getMessageStatus(status) {
+        console.log('Getting status for:', status);
         const statuses = {
             'sent': 'Отправлено',
             'delivered': 'Доставлено',
             'read': 'Прочитано',
             'failed': 'Ошибка'
         };
-        return statuses[status] || 'Неизвестно';
+        const result = statuses[status] || 'Неизвестно';
+        console.log('Status result:', result);
+        return result;
     }
 
     escapeHtml(text) {
