@@ -160,7 +160,7 @@ class ChatController {
 
         try {
            const user = await api.getCurrentUser();
-            this.currentUser = user.user;
+            this.currentUser = user;
             this.updateUserInfo();
             this.initializeWebSocket();
             this.loadInitialData();
@@ -213,7 +213,7 @@ class ChatController {
         try {
             // Загрузка чатов
             const chatsResponse = await api.getChats();
-            this.renderChats(chatsResponse.chats || []);
+            this.renderChats(chatsResponse || []);
             chatsLoaded = true;
         } catch (error) {
             console.error('Failed to load chats:', error);
@@ -224,8 +224,8 @@ class ChatController {
         try {
             // Загрузка контактов
             const contactsResponse = await api.getContacts();
-            const contactsArr = (contactsResponse && Array.isArray(contactsResponse.contacts))
-                ? contactsResponse.contacts
+            const contactsArr = (contactsResponse && Array.isArray(contactsResponse))
+                ? contactsResponse
                 : [];
             this.contacts = new Map(contactsArr.map(c => [c.id, c]));
             this.renderMyContacts();
@@ -511,7 +511,7 @@ class ChatController {
                 const memberIds = this.currentChat.members.map(m => m.user.id);
                 // Формируем имя чата из никнеймов в алфавитном порядке
                 const nicknames = [
-                    (this.currentUser.nickname || this.currentUser.username || '').toLowerCase(),
+                    (this.currentUser.username || this.currentUser.username || '').toLowerCase(),
                     (this.currentChat.members[1].user.nickname || this.currentChat.members[1].user.username || '').toLowerCase()
                 ].sort();
                 const chatName = nicknames.join('_');
@@ -546,13 +546,13 @@ class ChatController {
                 content: text,
                 type: 'text'
             });
-            
+
             // Если сообщение успешно сохранено, отправляем через WebSocket
-            if (response && response.message) {
+            if (response) {
                 this.websocket.sendChatMessage(this.currentChat.id, text);
                 
                 // Добавляем сообщение в UI
-                const messageElement = this.createMessageElement(response.message);
+                const messageElement = this.createMessageElement(response);
                 this.messages.appendChild(messageElement);
                 this.scrollToBottom();
                 
@@ -909,8 +909,8 @@ class ChatController {
         const contactUser = contact.contact;
         // Формируем имя чата из никнеймов в алфавитном порядке
         const nicknames = [
-            (this.currentUser.nickname || this.currentUser.username || '').toLowerCase(),
-            (contactUser.nickname || contactUser.username || '').toLowerCase()
+            (this.currentUser.username || this.currentUser.username || '').toLowerCase(),
+            (contactUser.username || contactUser.username || '').toLowerCase()
         ].sort();
         const chatName = nicknames.join('_');
         // Всегда делаем запрос на сервер для получения истории приватного чата
