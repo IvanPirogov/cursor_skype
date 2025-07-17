@@ -517,3 +517,44 @@ func (h *MessageHandler) MarkMessageAsRead(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Message marked as read successfully"})
 }
+
+// GetPrivateHistory возвращает историю приватного чата по имени
+func (h *MessageHandler) GetPrivateHistory(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+	userUUID, ok := userID.(uuid.UUID)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID type"})
+		return
+	}
+	name := c.Query("name")
+	if name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Chat name required"})
+		return
+	}
+	// Ищем приватный чат с таким именем
+	var chat models.Chat
+	err := h.db.DB.Where("name = ? AND type = ? AND is_active = ?", name, models.ChatTypePrivate, true).First(&chat).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusOK, gin.H{"chat": nil, "messages": []models.Message{}})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch chat"})
+		return
+	}
+	// Проверяем, что пользователь — участник чата
+	var member models.ChatMember
+	err = h.db.DB.Where("chat_id = ? AND user_id = ? AND is_active = ?", chat.ID, userUUID, true).First(&member).Error
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this chat"})
+		return
+	}
+	// Загружаем сообщения
+	var messages []models.Message
+	h.db.DB.Preload("Sender").Preload("Files").Where("chat_id = ?", chat.ID).Order("created_at ASC").Find(&messages)
+	c.JSON(http.StatusOK, gin.H{"chat": chat, "messages": messages})
+}
