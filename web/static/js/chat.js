@@ -238,7 +238,7 @@ class ChatController {
         const unreadCount = chat.unread_count || 0;
         
         div.innerHTML = `
-            <div class="chat-avatar ${chat.is_online ? 'online' : ''}">
+            <div class="chat-avatar">
                 ${avatar}
             </div>
             <div class="chat-details">
@@ -306,7 +306,17 @@ class ChatController {
         
         // Обновляем заголовок чата
         this.chatTitle.textContent = this.currentChat.name || 'Unknown';
-        this.chatStatus.textContent = this.currentChat.is_online ? 'Онлайн' : 'Офлайн';
+        
+        // Устанавливаем статус в зависимости от типа чата
+        if (this.currentChat.type === 'public') {
+            this.chatStatus.textContent = 'Публичный канал';
+        } else if (this.currentChat.type === 'private') {
+            this.chatStatus.textContent = 'Приватный чат';
+        } else if (this.currentChat.type === 'group') {
+            this.chatStatus.textContent = 'Групповой чат';
+        } else {
+            this.chatStatus.textContent = 'Чат';
+        }
         
         // Загружаем сообщения
         try {
