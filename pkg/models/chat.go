@@ -11,6 +11,7 @@ type ChatType string
 const (
 	ChatTypeGroup   ChatType = "group"
 	ChatTypePublic  ChatType = "public"
+	ChatTypePrivate ChatType = "private"
 )
 
 type Chat struct {
