@@ -728,3 +728,15 @@
 .user-search-name {
     font-weight: 500;
 }
+
+.selected-contact-info {
+    background: #e3f2fd;
+    color: #007bff;
+    font-weight: 500;
+    padding: 10px 20px;
+    border-bottom: 1px solid #b6d4fe;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}

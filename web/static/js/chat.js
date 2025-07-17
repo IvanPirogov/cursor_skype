@@ -354,6 +354,25 @@ class ChatController {
             console.error('Failed to load messages:', error);
             notifications.error('Ошибка', 'Не удалось загрузить сообщения');
         }
+        // Показываем инфо о контакте для приватного чата (1-на-1)
+        this.showSelectedContactInfo();
+    }
+
+    showSelectedContactInfo() {
+        const infoDiv = document.getElementById('selected-contact-info');
+        // Для чата 1-на-1 (group/public не показываем)
+        if (!this.currentChat || this.currentChat.type !== 'group' && this.currentChat.type !== 'public' && Array.isArray(this.currentChat.members) && this.currentChat.members.length === 2) {
+            // Найти собеседника (не текущий пользователь)
+            const member = (this.currentChat.members || []).find(m => m.user && m.user.id !== this.currentUser?.id);
+            if (member && member.user) {
+                const u = member.user;
+                const name = [u.first_name, u.last_name].filter(Boolean).join(' ');
+                infoDiv.innerHTML = `<span>${name ? name + ' ' : ''}${u.nickname ? u.nickname + ' ' : ''}(${u.username}) &lt;${u.email}&gt;</span>`;
+                infoDiv.style.display = '';
+                return;
+            }
+        }
+        infoDiv.style.display = 'none';
     }
 
     renderMessages(messages) {
@@ -683,12 +702,15 @@ class ChatController {
             return;
         }
         try {
-            const result = await api.addContact({
-                username: userQuery
-            });
+            const result = await api.addContact({ username: userQuery });
             notifications.success('Контакт добавлен', 'Новый контакт успешно добавлен');
             this.hideModals();
-            this.loadInitialData();
+            await this.loadInitialData();
+            // Если открыт чат с этим пользователем, обновить инфо
+            if (this.currentChat && Array.isArray(this.currentChat.members)) {
+                const isContact = this.currentChat.members.some(m => m.user && m.user.username === userQuery);
+                if (isContact) this.showSelectedContactInfo();
+            }
         } catch (error) {
             console.error('Failed to add contact:', error);
             notifications.error('Ошибка', 'Не удалось добавить контакт');
