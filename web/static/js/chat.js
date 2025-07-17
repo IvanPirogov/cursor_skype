@@ -798,14 +798,8 @@ class ChatController {
 
     renderMyContacts() {
         this.myContactItems.innerHTML = '';
-        // Собираем всех: с кем есть чат + кого выбрали вручную
-        const allContacts = new Map([...this.myContacts]);
-        this.selectedContactIds.forEach(id => {
-            if (this.contacts.has(id)) {
-                allContacts.set(id, this.contacts.get(id));
-            }
-        });
-        allContacts.forEach(contact => {
+        // Показываем всех контактов из this.contacts
+        this.contacts.forEach(contact => {
             const div = document.createElement('div');
             div.className = 'contact-item';
             div.dataset.contactId = contact.id;
