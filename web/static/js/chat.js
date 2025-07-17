@@ -582,6 +582,51 @@ class ChatController {
         // Очищаем поля при открытии
         document.getElementById('contact-username').value = '';
         document.getElementById('contact-nickname').value = '';
+        // Новый функционал: поиск и выбор пользователя
+        this.loadAndShowUserSearchList();
+    }
+
+    async loadAndShowUserSearchList() {
+        const userListDiv = document.getElementById('user-search-list');
+        userListDiv.innerHTML = '<div style="padding:8px;color:#888;">Загрузка...</div>';
+        try {
+            if (!this.allUsers) {
+                const users = await api.getUsers();
+                this.allUsers = users;
+            }
+            this.renderUserSearchList(this.allUsers);
+            // Поиск по вводу
+            const usernameInput = document.getElementById('contact-username');
+            usernameInput.addEventListener('input', () => {
+                const val = usernameInput.value.toLowerCase();
+                const filtered = this.allUsers.filter(u =>
+                    u.username.toLowerCase().includes(val) ||
+                    (u.nickname && u.nickname.toLowerCase().includes(val))
+                );
+                this.renderUserSearchList(filtered);
+            });
+        } catch (e) {
+            userListDiv.innerHTML = '<div style="padding:8px;color:#c00;">Ошибка загрузки пользователей</div>';
+        }
+    }
+
+    renderUserSearchList(users) {
+        const userListDiv = document.getElementById('user-search-list');
+        if (!users.length) {
+            userListDiv.innerHTML = '<div style="padding:8px;color:#888;">Пользователи не найдены</div>';
+            return;
+        }
+        userListDiv.innerHTML = users.map(u =>
+            `<div class="user-search-item" data-username="${u.username}">
+                <span class="user-search-name">${u.nickname ? u.nickname + ' (' + u.username + ')' : u.username}</span>
+            </div>`
+        ).join('');
+        // Клик по пользователю
+        userListDiv.querySelectorAll('.user-search-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.getElementById('contact-username').value = item.dataset.username;
+            });
+        });
     }
 
     hideModals() {
