@@ -908,7 +908,7 @@ class ChatController {
         // Всегда делаем запрос на сервер для получения истории приватного чата
         try {
             // Предполагается, что api.getPrivateChatHistory возвращает {chat, messages}
-            const response = await api.getPrivateChatHistory({ userId: contactUser.id });
+            const response = await api.getPrivateChatHistory({ name: chatName });
             if (response && response.chat && response.chat.id) {
                 this.chats.set(response.chat.id, response.chat);
                 this.currentChat = response.chat;

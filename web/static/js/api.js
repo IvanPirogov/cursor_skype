@@ -258,6 +258,11 @@ class ApiClient {
             return false;
         }
     }
+
+    // Получить историю приватного чата по имени
+    async getPrivateChatHistory({ name }) {
+        return this.get(`/messages/private_history?name=${encodeURIComponent(name)}`);
+    }
 }
 
 // Глобальная инициализация

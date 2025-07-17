@@ -104,6 +104,7 @@ func Setup(authService *auth.Service, hub *websocket.Hub, cfg *config.Config, da
 				messages.PUT("/:id", messageHandler.UpdateMessage)
 				messages.DELETE("/:id", messageHandler.DeleteMessage)
 				messages.POST("/:id/read", messageHandler.MarkMessageAsRead)
+				messages.GET("/private_history", messageHandler.GetPrivateHistory)
 			}
 
 			// Contact routes
