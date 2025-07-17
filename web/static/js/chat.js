@@ -339,55 +339,71 @@ class ChatController {
     createMessageElement(message) {
         console.log('Creating message element with data:', message);
         
+        const isOwnMessage = message.sender_id === this.currentUser.id;
         const div = document.createElement('div');
-        div.className = `message ${message.sender_id === this.currentUser.id ? 'own' : ''}`;
+        div.className = `message ${isOwnMessage ? 'own' : ''}`;
         div.dataset.messageId = message.id;
-        
-        // Получаем имя отправителя из объекта sender или используем fallback
-        let senderName = 'Unknown';
-        let senderInitials = 'U';
-        
-        if (message.sender) {
-            console.log('Message has sender object:', message.sender);
-            // Если есть объект sender с полной информацией
-            senderName = message.sender.username || message.sender.first_name || 'Unknown';
-            if (message.sender.first_name && message.sender.last_name) {
-                senderName = `${message.sender.first_name} ${message.sender.last_name}`;
-            } else if (message.sender.first_name) {
-                senderName = message.sender.first_name;
-            }
-            senderInitials = this.getAvatarInitials(senderName);
-        } else if (message.sender_name) {
-            console.log('Message has sender_name:', message.sender_name);
-            // Fallback для старых сообщений
-            senderName = message.sender_name;
-            senderInitials = this.getAvatarInitials(senderName);
-        } else {
-            console.log('No sender information found in message');
-            // Если нет информации об отправителе
-            senderInitials = this.getAvatarInitials('User');
-        }
-        
-        console.log('Final sender name:', senderName);
         
         const time = this.formatTime(message.created_at);
         
-        div.innerHTML = `
-            <div class="message-avatar">
-                ${senderInitials}
-            </div>
-            <div class="message-content">
-                <div class="message-info">
-                    <span class="message-sender">${senderName}</span>
-                    <span class="message-time">${time}</span>
+        if (isOwnMessage) {
+            // Сообщение автора - отображаем справа без имени отправителя
+            div.innerHTML = `
+                <div class="message-content">
+                    <div class="message-bubble">
+                        <p class="message-text">${this.escapeHtml(message.content)}</p>
+                        ${message.files ? this.renderMessageFiles(message.files) : ''}
+                    </div>
+                    <div class="message-info">
+                        <span class="message-time">${time}</span>
+                        <div class="message-status">${this.getMessageStatus(message.status)}</div>
+                    </div>
                 </div>
-                <div class="message-bubble">
-                    <p class="message-text">${this.escapeHtml(message.content)}</p>
-                    ${message.files ? this.renderMessageFiles(message.files) : ''}
+            `;
+        } else {
+            // Сообщение другого пользователя - отображаем слева с именем отправителя
+            let senderName = 'Unknown';
+            let senderInitials = 'U';
+            
+            if (message.sender) {
+                console.log('Message has sender object:', message.sender);
+                // Если есть объект sender с полной информацией
+                senderName = message.sender.username || message.sender.first_name || 'Unknown';
+                if (message.sender.first_name && message.sender.last_name) {
+                    senderName = `${message.sender.first_name} ${message.sender.last_name}`;
+                } else if (message.sender.first_name) {
+                    senderName = message.sender.first_name;
+                }
+                senderInitials = this.getAvatarInitials(senderName);
+            } else if (message.sender_name) {
+                console.log('Message has sender_name:', message.sender_name);
+                // Fallback для старых сообщений
+                senderName = message.sender_name;
+                senderInitials = this.getAvatarInitials(senderName);
+            } else {
+                console.log('No sender information found in message');
+                // Если нет информации об отправителе
+                senderInitials = this.getAvatarInitials('User');
+            }
+            
+            console.log('Final sender name:', senderName);
+            
+            div.innerHTML = `
+                <div class="message-avatar">
+                    ${senderInitials}
                 </div>
-                ${message.sender_id === this.currentUser.id ? `<div class="message-status">${this.getMessageStatus(message.status)}</div>` : ''}
-            </div>
-        `;
+                <div class="message-content">
+                    <div class="message-info">
+                        <span class="message-sender">${senderName}</span>
+                        <span class="message-time">${time}</span>
+                    </div>
+                    <div class="message-bubble">
+                        <p class="message-text">${this.escapeHtml(message.content)}</p>
+                        ${message.files ? this.renderMessageFiles(message.files) : ''}
+                    </div>
+                </div>
+            `;
+        }
         
         return div;
     }
