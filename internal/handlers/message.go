@@ -67,13 +67,31 @@ func (h *MessageHandler) GetMessages(c *gin.Context) {
 			return
 		}
 
-		// Проверяем, является ли пользователь участником чата
-		var member models.ChatMember
-		err = h.db.DB.Where("chat_id = ? AND user_id = ? AND is_active = ?", chatID, userUUID, true).
-			First(&member).Error
+		// Сначала получаем информацию о чате
+		var chat models.Chat
+		err = h.db.DB.Where("id = ? AND is_active = ?", chatID, true).
+			First(&chat).Error
 		if err != nil {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this chat"})
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Chat not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch chat"})
+			}
 			return
+		}
+
+		// Для публичных чатов доступ разрешен всем
+		if chat.Type == models.ChatTypePublic {
+			// Продолжаем загрузку сообщений
+		} else {
+			// Для приватных и групповых чатов проверяем членство
+			var member models.ChatMember
+			err = h.db.DB.Where("chat_id = ? AND user_id = ? AND is_active = ?", chatID, userUUID, true).
+				First(&member).Error
+			if err != nil {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this chat"})
+				return
+			}
 		}
 
 		query = query.Where("chat_id = ?", chatID)
@@ -136,12 +154,31 @@ func (h *MessageHandler) SendMessage(c *gin.Context) {
 
 	// Если указан chat_id, проверяем права доступа
 	if request.ChatID != nil {
-		var member models.ChatMember
-		err := h.db.DB.Where("chat_id = ? AND user_id = ? AND is_active = ?", *request.ChatID, userUUID, true).
-			First(&member).Error
+		// Сначала получаем информацию о чате
+		var chat models.Chat
+		err := h.db.DB.Where("id = ? AND is_active = ?", *request.ChatID, true).
+			First(&chat).Error
 		if err != nil {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this chat"})
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Chat not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch chat"})
+			}
 			return
+		}
+
+		// Для публичных чатов отправка сообщений разрешена всем
+		if chat.Type == models.ChatTypePublic {
+			// Продолжаем отправку сообщения
+		} else {
+			// Для приватных и групповых чатов проверяем членство
+			var member models.ChatMember
+			err = h.db.DB.Where("chat_id = ? AND user_id = ? AND is_active = ?", *request.ChatID, userUUID, true).
+				First(&member).Error
+			if err != nil {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this chat"})
+				return
+			}
 		}
 	}
 
