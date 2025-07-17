@@ -521,12 +521,12 @@ class ChatController {
                     member_ids: memberIds
                 };
                 const result = await api.createChat(chatData);
-                if (result && result.chat && result.chat.id) {
+                if (result && result.id) {
                     // Переносим сообщения (если были)
                     this.chats.delete(this.currentChat.id);
-                    this.currentChat = result.chat;
-                    this.chats.set(result.chat.id, result.chat);
-                    this.selectChat(result.chat.id);
+                    this.currentChat = result;
+                    this.chats.set(result.id, result);
+                    this.selectChat(result.id);
                 }
             } catch (error) {
                 console.error('Failed to create private chat:', error);
@@ -534,11 +534,7 @@ class ChatController {
                 return;
             }
         }
-        
-        // Очищаем поле ввода
-        this.messageText.value = '';
-        this.adjustTextareaHeight();
-        
+                
         // Сначала отправляем через API для сохранения в базе
         try {
             const response = await api.sendMessage({
@@ -559,6 +555,11 @@ class ChatController {
                 // Обновляем список чатов
                 this.updateChatLastMessage(this.currentChat.id, text);
             }
+
+            // Очищаем поле ввода
+            this.messageText.value = '';
+            this.adjustTextareaHeight();
+            
         } catch (error) {
             console.error('Failed to send message:', error);
             notifications.error('Ошибка', 'Не удалось отправить сообщение');
