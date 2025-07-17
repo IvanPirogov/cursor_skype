@@ -892,18 +892,25 @@ class ChatController {
         });
     }
 
-    startPrivateChat(contactId) {
+    async startPrivateChat(contactId) {
         const contact = this.contacts.get(contactId);
         if (!contact || !contact.contact) {
             notifications.error('Ошибка', 'Контакт не найден');
             return;
         }
         const contactUser = contact.contact;
-        // Ищем приватный чат с этим пользователем
+        // Формируем имя чата из никнеймов в алфавитном порядке
+        const nicknames = [
+            (this.currentUser.nickname || this.currentUser.username || '').toLowerCase(),
+            (contactUser.nickname || contactUser.username || '').toLowerCase()
+        ].sort();
+        const chatName = nicknames.join('_');
+        // Ищем приватный чат с этим пользователем по имени
         let privateChat = null;
         for (let chat of this.chats.values()) {
             if (
                 chat.type === 'private' &&
+                chat.name === chatName &&
                 Array.isArray(chat.members) &&
                 chat.members.length === 2 &&
                 chat.members.some(m => m.user && m.user.id === contactUser.id) &&
@@ -916,13 +923,26 @@ class ChatController {
         if (privateChat) {
             this.selectChat(privateChat.id);
         } else {
-            // Формируем имя чата из никнеймов в алфавитном порядке
-            const nicknames = [
-                (this.currentUser.nickname || this.currentUser.username || '').toLowerCase(),
-                (contactUser.nickname || contactUser.username || '').toLowerCase()
-            ].sort();
-            const chatName = nicknames.join('_');
-            // Создаём временный объект чата (без записи в базу)
+            // Пробуем найти чат на сервере по имени
+            try {
+                const response = await api.getChats();
+                const found = (response.chats || []).find(chat =>
+                    chat.type === 'private' &&
+                    chat.name === chatName &&
+                    Array.isArray(chat.members) &&
+                    chat.members.length === 2 &&
+                    chat.members.some(m => m.user && m.user.id === contactUser.id) &&
+                    chat.members.some(m => m.user && m.user.id === this.currentUser.id)
+                );
+                if (found) {
+                    this.chats.set(found.id, found);
+                    this.selectChat(found.id);
+                    return;
+                }
+            } catch (e) {
+                // ignore
+            }
+            // Если не найден — создаём временный чат и показываем пустую историю
             const tempChatId = 'temp-' + contactUser.id;
             const tempChat = {
                 id: tempChatId,
