@@ -231,7 +231,7 @@ class ChatController {
     }
 
     renderChats(chats) {
-       this.chatItems.innerHTML = '';
+        this.chatItems.innerHTML = '';
         // Собираем контакты с которыми есть переписка
         const myContactsMap = new Map();
         chats.forEach(chat => {
@@ -244,6 +244,8 @@ class ChatController {
                     }
                 });
             }
+            // Не отображаем приватные чаты во вкладке 'Чаты'
+            if (chat.type === 'private') return;
             const chatElement = this.createChatElement(chat);
             this.chatItems.appendChild(chatElement);
         });
@@ -332,8 +334,18 @@ class ChatController {
         
         this.currentChat = this.chats.get(chatId);
         if (!this.currentChat) {
-            console.error('Chat not found:', chatId);
-            return;
+            // Если это приватный чат с контактом, ищем его среди всех чатов
+            for (let chat of this.chats.values()) {
+                if (chat.type === 'private' && chat.id === chatId) {
+                    this.currentChat = chat;
+                    break;
+                }
+            }
+            // Если всё равно не найден — возможно, это временный чат
+            if (!this.currentChat) {
+                console.error('Chat not found:', chatId);
+                return;
+            }
         }
         
         // Обновляем заголовок чата
