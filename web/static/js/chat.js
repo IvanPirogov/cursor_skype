@@ -591,8 +591,8 @@ class ChatController {
         userListDiv.innerHTML = '<div style="padding:8px;color:#888;">Загрузка...</div>';
         try {
             if (!this.allUsers) {
-                const users = await api.getUsers();
-                this.allUsers = users;
+                const usersResp = await api.getUsers();
+                this.allUsers = usersResp.users || [];
             }
             this.renderUserSearchList(this.allUsers);
             // Поиск по вводу
