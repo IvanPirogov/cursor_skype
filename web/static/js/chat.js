@@ -599,9 +599,11 @@ class ChatController {
             queryInput.addEventListener('input', () => {
                 const val = queryInput.value.toLowerCase();
                 const filtered = this.allUsers.filter(u =>
-                    u.username.toLowerCase().includes(val) ||
+                    (u.username && u.username.toLowerCase().includes(val)) ||
                     (u.nickname && u.nickname.toLowerCase().includes(val)) ||
-                    (u.email && u.email.toLowerCase().includes(val))
+                    (u.email && u.email.toLowerCase().includes(val)) ||
+                    (u.first_name && u.first_name.toLowerCase().includes(val)) ||
+                    (u.last_name && u.last_name.toLowerCase().includes(val))
                 );
                 this.renderUserSearchList(filtered);
             });
@@ -616,11 +618,16 @@ class ChatController {
             userListDiv.innerHTML = '<div style="padding:8px;color:#888;">Пользователи не найдены</div>';
             return;
         }
-        userListDiv.innerHTML = users.map(u =>
-            `<div class="user-search-item" data-username="${u.username}">
-                <span class="user-search-name">${u.nickname ? u.nickname + ' (' + u.username + ')' : u.username} &lt;${u.email}&gt;</span>
-            </div>`
-        ).join('');
+        userListDiv.innerHTML = users.map(u => {
+            const name = [u.first_name, u.last_name].filter(Boolean).join(' ');
+            return `<div class="user-search-item" data-username="${u.username}">
+                <span class="user-search-name">
+                    ${name ? name + ' ' : ''}
+                    ${u.nickname ? u.nickname + ' ' : ''}
+                    (${u.username}) &lt;${u.email}&gt;
+                </span>
+            </div>`;
+        }).join('');
         // Клик по пользователю
         userListDiv.querySelectorAll('.user-search-item').forEach(item => {
             item.addEventListener('click', () => {
