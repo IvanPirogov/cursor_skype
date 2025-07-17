@@ -806,11 +806,46 @@ class ChatController {
             const avatar = this.getAvatarInitials(
                 contact.nickname || contact.username || contact.first_name || contact.last_name || 'User'
             );
+            // Формируем отображаемое имя
+            const firstName = contact.first_name || '';
+            const lastName = contact.last_name || '';
+            const username = contact.username || '';
+            const displayName = `${firstName} ${lastName}`.trim() + (username ? ` (${username})` : '');
             div.innerHTML = `
                 <div class="contact-avatar">${avatar}</div>
-                <div class="contact-name">${contact.nickname || contact.username || contact.first_name || contact.last_name || 'User'}</div>
+                <div class="contact-name">${displayName || username || 'User'}</div>
             `;
             div.addEventListener('click', () => this.startPrivateChat(contact.id));
+            // Tooltip с email
+            let tooltipTimeout;
+            let tooltipDiv;
+            div.addEventListener('mouseenter', () => {
+                tooltipTimeout = setTimeout(() => {
+                    if (!contact.email) return;
+                    tooltipDiv = document.createElement('div');
+                    tooltipDiv.className = 'contact-tooltip';
+                    tooltipDiv.textContent = contact.email;
+                    tooltipDiv.style.position = 'absolute';
+                    tooltipDiv.style.background = '#222';
+                    tooltipDiv.style.color = '#fff';
+                    tooltipDiv.style.padding = '4px 8px';
+                    tooltipDiv.style.borderRadius = '4px';
+                    tooltipDiv.style.fontSize = '12px';
+                    tooltipDiv.style.zIndex = 1000;
+                    // Позиционируем tooltip рядом с элементом
+                    const rect = div.getBoundingClientRect();
+                    tooltipDiv.style.left = rect.right + 8 + window.scrollX + 'px';
+                    tooltipDiv.style.top = rect.top + window.scrollY + 'px';
+                    document.body.appendChild(tooltipDiv);
+                }, 3000);
+            });
+            div.addEventListener('mouseleave', () => {
+                clearTimeout(tooltipTimeout);
+                if (tooltipDiv && tooltipDiv.parentNode) {
+                    tooltipDiv.parentNode.removeChild(tooltipDiv);
+                    tooltipDiv = null;
+                }
+            });
             this.myContactItems.appendChild(div);
         });
     }
