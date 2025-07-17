@@ -501,7 +501,12 @@ class ChatController {
         if (this.currentChat.isTemporary) {
             try {
                 const memberIds = this.currentChat.members.map(m => m.user.id);
-                const chatName = `${this.currentUser.nickname || this.currentUser.username}_${this.currentChat.members[1].user.nickname || this.currentChat.members[1].user.username}`;
+                // Формируем имя чата из никнеймов в алфавитном порядке
+                const nicknames = [
+                    (this.currentUser.nickname || this.currentUser.username || '').toLowerCase(),
+                    (this.currentChat.members[1].user.nickname || this.currentChat.members[1].user.username || '').toLowerCase()
+                ].sort();
+                const chatName = nicknames.join('_');
                 const chatData = {
                     name: chatName,
                     type: 'private',
@@ -911,12 +916,18 @@ class ChatController {
         if (privateChat) {
             this.selectChat(privateChat.id);
         } else {
+            // Формируем имя чата из никнеймов в алфавитном порядке
+            const nicknames = [
+                (this.currentUser.nickname || this.currentUser.username || '').toLowerCase(),
+                (contactUser.nickname || contactUser.username || '').toLowerCase()
+            ].sort();
+            const chatName = nicknames.join('_');
             // Создаём временный объект чата (без записи в базу)
             const tempChatId = 'temp-' + contactUser.id;
             const tempChat = {
                 id: tempChatId,
                 type: 'private',
-                name: `${this.currentUser.nickname || this.currentUser.username}_${contactUser.nickname || contactUser.username}`,
+                name: chatName,
                 members: [
                     { user: this.currentUser },
                     { user: contactUser }
