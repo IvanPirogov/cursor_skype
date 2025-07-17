@@ -209,11 +209,19 @@ class ChatController {
     }
 
     async loadInitialData() {
+        let chatsLoaded = false;
         try {
             // Загрузка чатов
             const chatsResponse = await api.getChats();
             this.renderChats(chatsResponse.chats || []);
+            chatsLoaded = true;
+        } catch (error) {
+            console.error('Failed to load chats:', error);
+            notifications.error('Ошибка', 'Не удалось загрузить чаты');
+            // Не делаем return!
+        }
 
+        try {
             // Загрузка контактов
             const contactsResponse = await api.getContacts();
             const contactsArr = (contactsResponse && Array.isArray(contactsResponse.contacts))
@@ -221,13 +229,13 @@ class ChatController {
                 : [];
             this.contacts = new Map(contactsArr.map(c => [c.id, c]));
             this.renderMyContacts();
-
-            // Обновление счетчика онлайн
-            this.updateOnlineCount();
         } catch (error) {
-            console.error('Failed to load initial data:', error);
-            notifications.error('Ошибка', 'Не удалось загрузить данные');
+            console.error('Failed to load contacts:', error);
+            notifications.error('Ошибка', 'Не удалось загрузить контакты');
         }
+
+        // Обновление счетчика онлайн
+        this.updateOnlineCount();
     }
 
     renderChats(chats) {
