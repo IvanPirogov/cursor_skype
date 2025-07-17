@@ -35,14 +35,14 @@ func (h *ChatHandler) GetChats(c *gin.Context) {
 		return
 	}
 
-	// Получаем чаты, где пользователь является участником
+	// Получаем чаты, где пользователь является участником, кроме приватных
 	var chatMembers []models.ChatMember
 	err := h.db.DB.Preload("Chat.Creator").
 		Preload("Chat.Members.User").
 		Preload("Chat.Messages", func(db *gorm.DB) *gorm.DB {
 			return db.Order("created_at DESC").Limit(1)
 		}).
-		Where("user_id = ? AND is_active = ?", userUUID, true).
+		Where("user_id = ? AND is_active = ? AND type != ?", userUUID, true, models.ChatTypePrivate).
 		Find(&chatMembers).Error
 
 	if err != nil {
