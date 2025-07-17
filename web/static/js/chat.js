@@ -820,25 +820,24 @@ class ChatController {
             // Tooltip с email
             let tooltipTimeout;
             let tooltipDiv;
-            div.addEventListener('mouseenter', () => {
+            div.addEventListener('mouseenter', (e) => {
                 tooltipTimeout = setTimeout(() => {
                     if (!c.email) return;
                     tooltipDiv = document.createElement('div');
                     tooltipDiv.className = 'contact-tooltip';
                     tooltipDiv.textContent = c.email;
-                    tooltipDiv.style.position = 'absolute';
+                    tooltipDiv.style.position = 'fixed';
                     tooltipDiv.style.background = '#222';
                     tooltipDiv.style.color = '#fff';
                     tooltipDiv.style.padding = '4px 8px';
                     tooltipDiv.style.borderRadius = '4px';
                     tooltipDiv.style.fontSize = '12px';
                     tooltipDiv.style.zIndex = 1000;
-                    // Позиционируем tooltip рядом с элементом
-                    const rect = div.getBoundingClientRect();
-                    tooltipDiv.style.left = rect.right + 8 + window.scrollX + 'px';
-                    tooltipDiv.style.top = rect.top + window.scrollY + 'px';
+                    // Позиционируем tooltip под курсором мыши
+                    tooltipDiv.style.left = (e.clientX + 10) + 'px';
+                    tooltipDiv.style.top = (e.clientY + 10) + 'px';
                     document.body.appendChild(tooltipDiv);
-                }, 3000);
+                }, 1000);
             });
             div.addEventListener('mouseleave', () => {
                 clearTimeout(tooltipTimeout);
