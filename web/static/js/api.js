@@ -30,7 +30,7 @@ class ApiClient {
 
     // Базовый метод для HTTP запросов
     async request(endpoint, options = {}) {
-        const url = `${this.baseUrl}${endpoint}`;
+        const url = `${this.baseUrl}${endpoint}?_t=${Date.now()}`;
         
         const config = {
             method: 'GET',
@@ -97,6 +97,8 @@ class ApiClient {
     // Методы пользователей
     async getCurrentUser() {
         const response = await this.get('/users/me');
+        console.log('API getCurrentUser response:', response);
+        console.log('API getCurrentUser returning:', response.user);
         return response.user;
     }
 
