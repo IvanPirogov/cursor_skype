@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
-	"messenger/pkg/models"
-	"messenger/internal/db"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"skytalk/internal/db"
+	"skytalk/pkg/models"
 )
 
 type ChatHandler struct {
@@ -459,26 +460,27 @@ func (h *ChatHandler) AddChatMember(c *gin.Context) {
 	err = h.db.DB.Where("chat_id = ? AND user_id = ?", chatID, request.UserID).
 		First(&existingMember).Error
 
-	if err == nil {
-		// Пользователь уже участник, активируем его
-		err = h.db.DB.Model(&existingMember).Updates(map[string]interface{}{
-			"is_active": true,
-			"role":      request.Role,
-			"left_at":   nil,
-		}).Error
-	} else if err == gorm.ErrRecordNotFound {
-		// Создаем нового участника
-		newMember := models.ChatMember{
-			ChatID:   chatID,
-			UserID:   request.UserID,
-			Role:     request.Role,
-			IsActive: true,
+	switch err {
+		case nil:
+			// Пользователь уже участник, активируем его
+			err = h.db.DB.Model(&existingMember).Updates(map[string]interface{}{
+				"is_active": true,
+				"role":      request.Role,
+				"left_at":   nil,
+			}).Error
+		case gorm.ErrRecordNotFound:
+			// Создаем нового участника
+			newMember := models.ChatMember{
+				ChatID:   chatID,
+				UserID:   request.UserID,
+				Role:     request.Role,
+				IsActive: true,
+			}
+			err = h.db.DB.Create(&newMember).Error
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing member"})
+			return
 		}
-		err = h.db.DB.Create(&newMember).Error
-	} else {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing member"})
-		return
-	}
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add member to chat"})
