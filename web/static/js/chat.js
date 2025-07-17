@@ -150,12 +150,9 @@ class ChatController {
         try {
             const user = await api.getCurrentUser();
             console.log('Current user data from server:', user);
-            console.log('User type:', typeof user);
-            console.log('User keys:', Object.keys(user || {}));
-            this.currentUser = user;
+            this.currentUser = user.user; // Извлекаем пользователя из объекта {user: {...}}
             console.log('Current user set to:', this.currentUser);
             console.log('Current user ID:', this.currentUser?.id);
-            console.log('Current user ID type:', typeof this.currentUser?.id);
             this.updateUserInfo();
             this.initializeWebSocket();
             this.loadInitialData();
@@ -343,21 +340,7 @@ class ChatController {
     }
 
     createMessageElement(message) {
-        console.log('Creating message element with data:', message);
-        console.log('Current user ID:', this.currentUser?.id);
-        console.log('Message sender ID:', message.sender_id);
-        console.log('Message sender ID type:', typeof message.sender_id);
-        console.log('Current user ID type:', typeof this.currentUser?.id);
-        console.log('Current user object:', this.currentUser);
-        
         const isOwnMessage = message.sender_id === this.currentUser.id;
-        console.log('Is own message:', isOwnMessage);
-        
-        // Fallback проверка
-        if (!this.currentUser?.id) {
-            console.error('Current user ID is undefined!');
-            console.log('Full current user object:', this.currentUser);
-        }
         const div = document.createElement('div');
         div.className = `message ${isOwnMessage ? 'own' : ''}`;
         div.dataset.messageId = message.id;
