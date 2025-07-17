@@ -216,10 +216,11 @@ class ChatController {
 
             // Загрузка контактов
             const contactsResponse = await api.getContacts();
-            if (contactsResponse && Array.isArray(contactsResponse.contacts)) {
-                this.contacts = new Map(contactsResponse.contacts.map(c => [c.id, c]));
-                this.renderMyContacts();
-            }
+            const contactsArr = (contactsResponse && Array.isArray(contactsResponse.contacts))
+                ? contactsResponse.contacts
+                : [];
+            this.contacts = new Map(contactsArr.map(c => [c.id, c]));
+            this.renderMyContacts();
 
             // Обновление счетчика онлайн
             this.updateOnlineCount();
