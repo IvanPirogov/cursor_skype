@@ -482,8 +482,33 @@ class ChatController {
     }
 
     async sendMessage() {
-        const content = this.messageText.value.trim();
-        if (!content || !this.currentChat) return;
+        if (!this.currentChat) return;
+        const text = this.messageText.value.trim();
+        if (!text) return;
+        // Если чат временный — создаём его в базе
+        if (this.currentChat.isTemporary) {
+            try {
+                const memberIds = this.currentChat.members.map(m => m.user.id);
+                const chatName = `${this.currentUser.nickname || this.currentUser.username}_${this.currentChat.members[1].user.nickname || this.currentChat.members[1].user.username}`;
+                const chatData = {
+                    name: chatName,
+                    type: 'private',
+                    member_ids: memberIds
+                };
+                const result = await api.createChat(chatData);
+                if (result && result.chat && result.chat.id) {
+                    // Переносим сообщения (если были)
+                    this.chats.delete(this.currentChat.id);
+                    this.currentChat = result.chat;
+                    this.chats.set(result.chat.id, result.chat);
+                    this.selectChat(result.chat.id);
+                }
+            } catch (error) {
+                console.error('Failed to create private chat:', error);
+                notifications.error('Ошибка', 'Не удалось создать приватный чат');
+                return;
+            }
+        }
         
         // Очищаем поле ввода
         this.messageText.value = '';
@@ -493,13 +518,13 @@ class ChatController {
         try {
             const response = await api.sendMessage({
                 chat_id: this.currentChat.id,
-                content: content,
+                content: text,
                 type: 'text'
             });
             
             // Если сообщение успешно сохранено, отправляем через WebSocket
             if (response && response.message) {
-                this.websocket.sendChatMessage(this.currentChat.id, content);
+                this.websocket.sendChatMessage(this.currentChat.id, text);
                 
                 // Добавляем сообщение в UI
                 const messageElement = this.createMessageElement(response.message);
@@ -507,7 +532,7 @@ class ChatController {
                 this.scrollToBottom();
                 
                 // Обновляем список чатов
-                this.updateChatLastMessage(this.currentChat.id, content);
+                this.updateChatLastMessage(this.currentChat.id, text);
             }
         } catch (error) {
             console.error('Failed to send message:', error);
@@ -848,6 +873,48 @@ class ChatController {
             });
             this.myContactItems.appendChild(div);
         });
+    }
+
+    startPrivateChat(contactId) {
+        const contact = this.contacts.get(contactId);
+        if (!contact || !contact.contact) {
+            notifications.error('Ошибка', 'Контакт не найден');
+            return;
+        }
+        const contactUser = contact.contact;
+        // Ищем приватный чат с этим пользователем
+        let privateChat = null;
+        for (let chat of this.chats.values()) {
+            if (
+                chat.type === 'private' &&
+                Array.isArray(chat.members) &&
+                chat.members.length === 2 &&
+                chat.members.some(m => m.user && m.user.id === contactUser.id) &&
+                chat.members.some(m => m.user && m.user.id === this.currentUser.id)
+            ) {
+                privateChat = chat;
+                break;
+            }
+        }
+        if (privateChat) {
+            this.selectChat(privateChat.id);
+        } else {
+            // Создаём временный объект чата (без записи в базу)
+            const tempChatId = 'temp-' + contactUser.id;
+            const tempChat = {
+                id: tempChatId,
+                type: 'private',
+                name: `${this.currentUser.nickname || this.currentUser.username}_${contactUser.nickname || contactUser.username}`,
+                members: [
+                    { user: this.currentUser },
+                    { user: contactUser }
+                ],
+                messages: [],
+                isTemporary: true
+            };
+            this.chats.set(tempChatId, tempChat);
+            this.selectChat(tempChatId);
+        }
     }
 
     // Утилиты
