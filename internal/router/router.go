@@ -18,7 +18,9 @@ func Setup(authService *auth.Service, hub *websocket.Hub, cfg *config.Config, da
 	router := gin.Default()
 
 	// Middleware
-	router.Use(gin.Logger())
+	if cfg.Server.EnableLogs {
+		router.Use(gin.Logger())
+	}
 	router.Use(gin.Recovery())
 	router.Use(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")

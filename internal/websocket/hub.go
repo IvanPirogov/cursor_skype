@@ -82,7 +82,7 @@ func (h *Hub) Run() {
 			// Notify others about user joining
 			h.broadcastUserStatus(client.UserID, models.StatusOnline)
 			
-			log.Printf("Client %s connected", client.UserID)
+			// log.Printf("Client %s connected", client.UserID)
 
 		case client := <-h.unregister:
 			h.mutex.Lock()
@@ -96,7 +96,7 @@ func (h *Hub) Run() {
 				// Notify others about user leaving
 				h.broadcastUserStatus(client.UserID, models.StatusOffline)
 				
-				log.Printf("Client %s disconnected", client.UserID)
+				// log.Printf("Client %s disconnected", client.UserID)
 			}
 			h.mutex.Unlock()
 
@@ -181,7 +181,7 @@ func (h *Hub) HandleWebSocket(authService *auth.Service) gin.HandlerFunc {
 
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
-			log.Printf("WebSocket upgrade error: %v", err)
+			// log.Printf("WebSocket upgrade error: %v", err)
 			return
 		}
 

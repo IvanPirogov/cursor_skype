@@ -175,5 +175,5 @@ func (c *Client) handleMessageRead(msg *Message) {
 func (c *Client) handleNewContact(msg *Message) {
 	// Handle new contact notification
 	// This message is already sent to the specific user, so we just log it
-	log.Printf("New contact notification sent to user %s", c.UserID)
+	// log.Printf("New contact notification sent to user %s", c.UserID)
 }
