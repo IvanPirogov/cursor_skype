@@ -123,6 +123,11 @@ class WebSocketClient {
                 this.emit('user_left', { ...data, user_id });
                 break;
                 
+            case 'new_contact':
+                console.log('New contact notification:', data);
+                this.emit('new_contact', { ...data, user_id, timestamp });
+                break;
+                
             default:
                 console.warn('Unknown message type:', type);
         }

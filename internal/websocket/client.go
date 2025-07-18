@@ -117,6 +117,8 @@ func (c *Client) handleIncomingMessage(message []byte) {
 		c.handleCallEnd(&msg)
 	case MessageTypeMessageRead:
 		c.handleMessageRead(&msg)
+	case MessageTypeNewContact:
+		c.handleNewContact(&msg)
 	default:
 		log.Printf("Unknown message type: %s", msg.Type)
 	}
@@ -168,4 +170,10 @@ func (c *Client) handleMessageRead(msg *Message) {
 	// Handle message read receipt
 	data, _ := json.Marshal(msg)
 	c.Hub.broadcast <- data
+}
+
+func (c *Client) handleNewContact(msg *Message) {
+	// Handle new contact notification
+	// This message is already sent to the specific user, so we just log it
+	log.Printf("New contact notification sent to user %s", c.UserID)
 }
