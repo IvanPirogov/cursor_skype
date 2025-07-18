@@ -30,63 +30,64 @@
 }
 ```
 
-## Функции для отправки уведомлений
+## Использование существующей функции SendToUser
 
-### 1. SendNewContactNotification
-
-Отправляет уведомление с полным объектом контакта.
+Для отправки уведомлений используется существующая функция `SendToUser`:
 
 ```go
-func (h *Hub) SendNewContactNotification(userID uuid.UUID, contact models.Contact)
+func (h *Hub) SendToUser(userID uuid.UUID, message []byte)
 ```
 
-**Параметры:**
-- `userID` - UUID пользователя, которому отправляется уведомление
-- `contact` - Полный объект контакта с загруженными данными пользователя
+## Создание сообщения о новом контакте
 
-**Пример использования:**
+### 1. С полным объектом Contact
+
 ```go
-// Получаем контакт из БД с предзагруженными данными пользователя
-var contact models.Contact
-db.Preload("Contact").Where("user_id = ? AND contact_id = ?", userID, contactID).First(&contact)
-
-// Отправляем уведомление
-hub.SendNewContactNotification(userID, contact)
+func createNewContactMessage(userID uuid.UUID, contact models.Contact) ([]byte, error) {
+	message := websocket.Message{
+		Type:      websocket.MessageTypeNewContact,
+		UserID:    userID,
+		Timestamp: time.Now().Unix(),
+		Data: map[string]interface{}{
+			"contact_id": contact.ContactID,
+			"contact": map[string]interface{}{
+				"id":         contact.Contact.ID,
+				"username":   contact.Contact.Username,
+				"first_name": contact.Contact.FirstName,
+				"last_name":  contact.Contact.LastName,
+				"avatar":     contact.Contact.Avatar,
+				"status":     contact.Contact.Status,
+			},
+			"nickname": contact.Nickname,
+		},
+	}
+	
+	return json.Marshal(message)
+}
 ```
 
-### 2. SendNewContactNotificationSimple
-
-Отправляет уведомление с минимальными данными.
+### 2. С минимальными данными
 
 ```go
-func (h *Hub) SendNewContactNotificationSimple(
-    userID uuid.UUID, 
-    contactID uuid.UUID, 
-    contactUsername string, 
-    contactFirstName string, 
-    contactLastName string, 
-    nickname string
-)
-```
-
-**Параметры:**
-- `userID` - UUID пользователя, которому отправляется уведомление
-- `contactID` - UUID контакта
-- `contactUsername` - Имя пользователя контакта
-- `contactFirstName` - Имя контакта
-- `contactLastName` - Фамилия контакта
-- `nickname` - Прозвище контакта
-
-**Пример использования:**
-```go
-hub.SendNewContactNotificationSimple(
-    userID,
-    contactID,
-    "john_doe",
-    "John",
-    "Doe",
-    "Коллега"
-)
+func createSimpleNewContactMessage(userID uuid.UUID, contactID uuid.UUID, contactUsername string, contactFirstName string, contactLastName string, nickname string) ([]byte, error) {
+	message := websocket.Message{
+		Type:      websocket.MessageTypeNewContact,
+		UserID:    userID,
+		Timestamp: time.Now().Unix(),
+		Data: map[string]interface{}{
+			"contact_id": contactID,
+			"contact": map[string]interface{}{
+				"id":         contactID,
+				"username":   contactUsername,
+				"first_name": contactFirstName,
+				"last_name":  contactLastName,
+			},
+			"nickname": nickname,
+		},
+	}
+	
+	return json.Marshal(message)
+}
 ```
 
 ## Интеграция в обработчики
@@ -114,11 +115,38 @@ func addContactHandler(hub *websocket.Hub, userID uuid.UUID, contactID uuid.UUID
     
     contact.Contact = contactUser
     
-    // 3. Отправляем уведомление
-    hub.SendNewContactNotification(userID, contact)
+    // 3. Создаем сообщение
+    message, err := createNewContactMessage(userID, contact)
+    if err != nil {
+        return err
+    }
+    
+    // 4. Отправляем уведомление используя существующую функцию SendToUser
+    hub.SendToUser(userID, message)
     
     return nil
 }
+```
+
+### Простой пример использования
+
+```go
+// Создаем сообщение с минимальными данными
+message, err := createSimpleNewContactMessage(
+    userID,
+    contactID,
+    "john_doe",
+    "John",
+    "Doe",
+    "Коллега",
+)
+if err != nil {
+    // Обработка ошибки
+    return err
+}
+
+// Отправляем уведомление
+hub.SendToUser(userID, message)
 ```
 
 ## Обработка на клиентской стороне
