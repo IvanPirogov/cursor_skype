@@ -92,6 +92,8 @@ func (c *Client) writePump() {
 }
 
 func (c *Client) handleIncomingMessage(message []byte) {
+	log.Printf("Received message from client %s: %s", c.UserID, string(message))
+	
 	var msg Message
 	if err := json.Unmarshal(message, &msg); err != nil {
 		log.Printf("Error unmarshaling message: %v", err)
@@ -101,6 +103,8 @@ func (c *Client) handleIncomingMessage(message []byte) {
 	// Set the user ID from the client
 	msg.UserID = c.UserID
 	msg.Timestamp = time.Now().Unix()
+
+	log.Printf("Processing message type: %s from user: %s", msg.Type, c.UserID)
 
 	switch msg.Type {
 	case MessageTypeChat:

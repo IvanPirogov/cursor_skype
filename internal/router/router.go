@@ -56,6 +56,7 @@ func Setup(authService *auth.Service, hub *websocket.Hub, cfg *config.Config, da
 	router.StaticFile("/", "./web/index.html")
 	router.StaticFile("/index.html", "./web/index.html")
 	router.StaticFile("/chat.html", "./web/chat.html")
+	router.StaticFile("/websocket-test.html", "./web/websocket-test.html")
 
 	// WebSocket endpoint
 	router.GET("/ws", hub.HandleWebSocket(authService))

@@ -181,6 +181,7 @@ class ChatController {
     }
 
     initializeWebSocket() {
+        console.log('Initializing WebSocket...');
         this.websocket = initWebSocket();
         
         // Обработчики WebSocket событий
@@ -195,7 +196,17 @@ class ChatController {
         });
 
         this.websocket.on('new_message', (data) => {
+            console.log('Received new message:', data);
             this.handleNewMessage(data);
+        });
+
+        this.websocket.on('new_contact', (data) => {
+            console.log('Received new contact notification:', data);
+            // Обработка нового контакта
+        });
+
+        this.websocket.on('error', (error) => {
+            console.error('WebSocket error:', error);
         });
 
         this.websocket.on('user_status', (data) => {
