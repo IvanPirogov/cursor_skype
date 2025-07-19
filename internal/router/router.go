@@ -18,7 +18,9 @@ func Setup(authService *auth.Service, hub *websocket.Hub, cfg *config.Config, da
 	router := gin.Default()
 
 	// Middleware
-	router.Use(gin.Logger())
+	if cfg.Server.EnableLogs {
+		router.Use(gin.Logger())
+	}
 	router.Use(gin.Recovery())
 	router.Use(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
@@ -36,7 +38,7 @@ func Setup(authService *auth.Service, hub *websocket.Hub, cfg *config.Config, da
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(database)
-	chatHandler := handlers.NewChatHandler(database)
+	chatHandler := handlers.NewChatHandler(database, hub)
 	messageHandler := handlers.NewMessageHandler(database)
 	contactHandler := handlers.NewContactHandler()
 	callHandler := handlers.NewCallHandler()
@@ -54,6 +56,7 @@ func Setup(authService *auth.Service, hub *websocket.Hub, cfg *config.Config, da
 	router.StaticFile("/", "./web/index.html")
 	router.StaticFile("/index.html", "./web/index.html")
 	router.StaticFile("/chat.html", "./web/chat.html")
+	router.StaticFile("/websocket-test.html", "./web/websocket-test.html")
 
 	// WebSocket endpoint
 	router.GET("/ws", hub.HandleWebSocket(authService))

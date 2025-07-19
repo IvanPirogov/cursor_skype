@@ -9,11 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	"skytalk/internal/auth"
-	"skytalk/internal/config"
-	"skytalk/internal/db"
-	"skytalk/internal/router"
-	"skytalk/internal/websocket"
+	"messenger/internal/auth"
+	"messenger/internal/config"
+	"messenger/internal/db"
+	"messenger/internal/router"
+	"messenger/internal/websocket"
 )
 
 func main() {

@@ -20,6 +20,7 @@ type ServerConfig struct {
 	Environment  string
 	ReadTimeout  int
 	WriteTimeout int
+	EnableLogs   bool
 }
 
 type DatabaseConfig struct {
@@ -60,6 +61,7 @@ func LoadConfig() (*Config, error) {
 			Environment:  getEnv("ENVIRONMENT", "development"),
 			ReadTimeout:  getEnvAsInt("READ_TIMEOUT", 10),
 			WriteTimeout: getEnvAsInt("WRITE_TIMEOUT", 10),
+			EnableLogs:   getEnvAsBool("ENABLE_LOGS", true),
 		},
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
@@ -115,6 +117,15 @@ func getEnvAsInt64(key string, defaultValue int64) int64 {
 	if value := os.Getenv(key); value != "" {
 		if intValue, err := strconv.ParseInt(value, 10, 64); err == nil {
 			return intValue
+		}
+	}
+	return defaultValue
+}
+
+func getEnvAsBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
 		}
 	}
 	return defaultValue

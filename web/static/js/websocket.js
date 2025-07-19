@@ -21,6 +21,10 @@ class WebSocketClient {
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws?token=${token}`;
+        
+        console.log('Attempting to connect to WebSocket:', wsUrl);
+        console.log('Current location:', window.location.href);
+        console.log('Token exists:', !!token);
 
         try {
             this.ws = new WebSocket(wsUrl);
@@ -33,7 +37,7 @@ class WebSocketClient {
 
     setupEventHandlers() {
         this.ws.onopen = () => {
-            console.log('WebSocket connected');
+            console.log('WebSocket connected successfully');
             this.isConnected = true;
             this.reconnectAttempts = 0;
             
@@ -54,7 +58,7 @@ class WebSocketClient {
         };
 
         this.ws.onclose = (event) => {
-            console.log('WebSocket disconnected:', event.code, event.reason);
+            console.log('WebSocket disconnected:', event.code, event.reason, 'Clean:', event.wasClean);
             this.isConnected = false;
             this.emit('disconnected');
             
@@ -121,6 +125,11 @@ class WebSocketClient {
                 
             case 'user_left':
                 this.emit('user_left', { ...data, user_id });
+                break;
+                
+            case 'new_contact':
+                console.log('New contact notification:', data);
+                this.emit('new_contact', { ...data, user_id, timestamp });
                 break;
                 
             default:

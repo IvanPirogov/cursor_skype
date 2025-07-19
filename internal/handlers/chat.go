@@ -1,23 +1,54 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"skytalk/internal/db"
-	"skytalk/pkg/models"
+	"messenger/internal/db"
+	"messenger/internal/websocket"
+	"messenger/pkg/models"
 )
 
 type ChatHandler struct {
-	db *db.Database
+	db  *db.Database
+	hub *websocket.Hub
 }
 
-func NewChatHandler(database *db.Database) *ChatHandler {
+func NewChatHandler(database *db.Database, hub *websocket.Hub) *ChatHandler {
 	return &ChatHandler{
-		db: database,
+		db:  database,
+		hub: hub,
+	}
+}
+
+// sendNewContactNotification отправляет уведомление о новом контакте
+func (h *ChatHandler) sendNewContactNotification(targetUserID uuid.UUID, contactUser models.User) {
+	message := websocket.Message{
+		Type:      websocket.MessageTypeNewContact,
+		UserID:    targetUserID,
+		Timestamp: time.Now().Unix(),
+		Data: map[string]interface{}{
+			"contact_id": contactUser.ID,
+			"contact": map[string]interface{}{
+				"id":         contactUser.ID,
+				"username":   contactUser.Username,
+				"first_name": contactUser.FirstName,
+				"last_name":  contactUser.LastName,
+				"avatar":     contactUser.Avatar,
+				"status":     contactUser.Status,
+			},
+			"nickname": "",
+		},
+	}
+	
+	data, err := json.Marshal(message)
+	if err == nil {
+		h.hub.SendToUser(targetUserID, data)
 	}
 }
 
@@ -161,6 +192,39 @@ func (h *ChatHandler) CreateChat(c *gin.Context) {
 					IsActive: true,
 				}
 				h.db.DB.Create(&member)
+				
+				// Для приватных чатов добавляем контакты и отправляем уведомления
+				if chatType == models.ChatTypePrivate {
+					// Добавляем контакт для участника
+					contact := models.Contact{
+						UserID:    memberID,
+						ContactID: userUUID,
+						IsBlocked: false,
+					}
+					h.db.DB.Create(&contact)
+					
+					// Получаем данные пользователя-создателя для уведомления
+					var creator models.User
+					if err := h.db.DB.Where("id = ?", userUUID).First(&creator).Error; err == nil {
+						// Отправляем уведомление участнику
+						h.sendNewContactNotification(memberID, creator)
+					}
+					
+					// Добавляем контакт для создателя
+					creatorContact := models.Contact{
+						UserID:    userUUID,
+						ContactID: memberID,
+						IsBlocked: false,
+					}
+					h.db.DB.Create(&creatorContact)
+					
+					// Получаем данные участника для уведомления создателю
+					var memberUser models.User
+					if err := h.db.DB.Where("id = ?", memberID).First(&memberUser).Error; err == nil {
+						// Отправляем уведомление создателю
+						h.sendNewContactNotification(userUUID, memberUser)
+					}
+				}
 			}
 		}
 	}

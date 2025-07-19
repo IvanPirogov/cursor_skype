@@ -1,13 +1,9 @@
 package websocket
 
 import (
-	"encoding/json"
 	"log"
-	"messenger/internal/auth"
-	"messenger/pkg/models"
 	"net/http"
 	"sync"
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
@@ -19,9 +15,13 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+func Upgrade(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
+	return upgrader.Upgrade(w, r, nil)
+}
+
 type Hub struct {
 	clients    map[uuid.UUID]*Client
-	register   chan *Client
+	Register   chan *Client
 	unregister chan *Client
 	broadcast  chan []byte
 	mutex      sync.RWMutex
@@ -55,12 +55,13 @@ const (
 	MessageTypeMessageRead  = "message_read"
 	MessageTypeUserJoined   = "user_joined"
 	MessageTypeUserLeft     = "user_left"
+	MessageTypeNewContact   = "new_contact"
 )
 
 func NewHub(db *gorm.DB) *Hub {
 	return &Hub{
 		clients:    make(map[uuid.UUID]*Client),
-		register:   make(chan *Client),
+		Register:   make(chan *Client),
 		unregister: make(chan *Client),
 		broadcast:  make(chan []byte),
 		db:         db,
@@ -70,16 +71,10 @@ func NewHub(db *gorm.DB) *Hub {
 func (h *Hub) Run() {
 	for {
 		select {
-		case client := <-h.register:
+		case client := <-h.Register:
 			h.mutex.Lock()
 			h.clients[client.UserID] = client
 			h.mutex.Unlock()
-			
-			// Update user status to online
-			h.db.Model(&models.User{}).Where("id = ?", client.UserID).Update("status", models.StatusOnline)
-			
-			// Notify others about user joining
-			h.broadcastUserStatus(client.UserID, models.StatusOnline)
 			
 			log.Printf("Client %s connected", client.UserID)
 
@@ -88,13 +83,6 @@ func (h *Hub) Run() {
 			if _, ok := h.clients[client.UserID]; ok {
 				delete(h.clients, client.UserID)
 				close(client.Send)
-				
-				// Update user status to offline
-				h.db.Model(&models.User{}).Where("id = ?", client.UserID).Update("status", models.StatusOffline)
-				
-				// Notify others about user leaving
-				h.broadcastUserStatus(client.UserID, models.StatusOffline)
-				
 				log.Printf("Client %s disconnected", client.UserID)
 			}
 			h.mutex.Unlock()
@@ -115,36 +103,51 @@ func (h *Hub) Run() {
 }
 
 func (h *Hub) SendToUser(userID uuid.UUID, message []byte) {
+	log.Printf("Attempting to send message to user %s", userID)
+	
 	h.mutex.RLock()
 	client, exists := h.clients[userID]
 	h.mutex.RUnlock()
 	
 	if exists {
+		log.Printf("User %s found, sending message", userID)
 		select {
 		case client.Send <- message:
+			log.Printf("Message sent successfully to user %s", userID)
 		default:
+			log.Printf("Failed to send message to user %s, closing connection", userID)
 			close(client.Send)
 			h.mutex.Lock()
 			delete(h.clients, userID)
 			h.mutex.Unlock()
 		}
+	} else {
+		log.Printf("User %s not found in connected clients", userID)
 	}
 }
 
-func (h *Hub) broadcastUserStatus(userID uuid.UUID, status models.UserStatus) {
-	message := Message{
-		Type:      MessageTypeUserStatus,
-		UserID:    userID,
-		Timestamp: getCurrentTimestamp(),
-		Data: map[string]interface{}{
-			"user_id": userID,
-			"status":  status,
-		},
-	}
+func (h *Hub) SendToChatMembers(chatID string, message []byte, excludeUserID uuid.UUID) {
+	log.Printf("Sending message to chat %s members, excluding user %s", chatID, excludeUserID)
 	
-	data, _ := json.Marshal(message)
-	h.broadcast <- data
+	h.mutex.RLock()
+	for userID, client := range h.clients {
+		if userID != excludeUserID {
+			select {
+			case client.Send <- message:
+				log.Printf("Message sent to chat member %s", userID)
+			default:
+				log.Printf("Failed to send message to user %s, closing connection", userID)
+				close(client.Send)
+				h.mutex.Lock()
+				delete(h.clients, userID)
+				h.mutex.Unlock()
+			}
+		}
+	}
+	h.mutex.RUnlock()
 }
+
+
 
 func (h *Hub) IsUserOnline(userID uuid.UUID) bool {
 	h.mutex.RLock()
@@ -164,41 +167,9 @@ func (h *Hub) GetOnlineUsers() []uuid.UUID {
 	return users
 }
 
-func (h *Hub) HandleWebSocket(authService *auth.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		token := c.Query("token")
-		if token == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token required"})
-			return
-		}
 
-		claims, err := authService.ValidateToken(token)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			return
-		}
-
-		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-		if err != nil {
-			log.Printf("WebSocket upgrade error: %v", err)
-			return
-		}
-
-		client := &Client{
-			ID:     uuid.New(),
-			Hub:    h,
-			Conn:   conn,
-			Send:   make(chan []byte, 256),
-			UserID: claims.UserID,
-		}
-
-		client.Hub.register <- client
-
-		go client.writePump()
-		go client.readPump()
-	}
-}
 
 func getCurrentTimestamp() int64 {
 	return 0 // Implement proper timestamp
 }
+

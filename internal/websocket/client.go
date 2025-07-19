@@ -20,7 +20,7 @@ var (
 	space   = []byte{' '}
 )
 
-func (c *Client) readPump() {
+func (c *Client) ReadPump() {
 	defer func() {
 		c.Hub.unregister <- c
 		c.Conn.Close()
@@ -49,7 +49,7 @@ func (c *Client) readPump() {
 	}
 }
 
-func (c *Client) writePump() {
+func (c *Client) WritePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -92,6 +92,8 @@ func (c *Client) writePump() {
 }
 
 func (c *Client) handleIncomingMessage(message []byte) {
+	log.Printf("Received message from client %s: %s", c.UserID, string(message))
+	
 	var msg Message
 	if err := json.Unmarshal(message, &msg); err != nil {
 		log.Printf("Error unmarshaling message: %v", err)
@@ -101,6 +103,8 @@ func (c *Client) handleIncomingMessage(message []byte) {
 	// Set the user ID from the client
 	msg.UserID = c.UserID
 	msg.Timestamp = time.Now().Unix()
+
+	log.Printf("Processing message type: %s from user: %s", msg.Type, c.UserID)
 
 	switch msg.Type {
 	case MessageTypeChat:
@@ -117,21 +121,31 @@ func (c *Client) handleIncomingMessage(message []byte) {
 		c.handleCallEnd(&msg)
 	case MessageTypeMessageRead:
 		c.handleMessageRead(&msg)
+	case MessageTypeNewContact:
+		c.handleNewContact(&msg)
 	default:
 		log.Printf("Unknown message type: %s", msg.Type)
 	}
 }
 
 func (c *Client) handleChatMessage(msg *Message) {
-	// Broadcast to all connected clients
-	data, _ := json.Marshal(msg)
-	c.Hub.broadcast <- data
+	// Send to chat members only
+	if chatData, ok := msg.Data.(map[string]interface{}); ok {
+		if chatID, ok := chatData["chat_id"].(string); ok {
+			data, _ := json.Marshal(msg)
+			c.Hub.SendToChatMembers(chatID, data, c.UserID)
+		}
+	}
 }
 
 func (c *Client) handleTypingMessage(msg *Message) {
-	// Broadcast typing indicator to other users
-	data, _ := json.Marshal(msg)
-	c.Hub.broadcast <- data
+	// Send typing indicator to chat members only
+	if chatData, ok := msg.Data.(map[string]interface{}); ok {
+		if chatID, ok := chatData["chat_id"].(string); ok {
+			data, _ := json.Marshal(msg)
+			c.Hub.SendToChatMembers(chatID, data, c.UserID)
+		}
+	}
 }
 
 func (c *Client) handleCallOffer(msg *Message) {
@@ -168,4 +182,10 @@ func (c *Client) handleMessageRead(msg *Message) {
 	// Handle message read receipt
 	data, _ := json.Marshal(msg)
 	c.Hub.broadcast <- data
+}
+
+func (c *Client) handleNewContact(msg *Message) {
+	// Handle new contact notification
+	// This message is already sent to the specific user, so we just log it
+	// log.Printf("New contact notification sent to user %s", c.UserID)
 }
