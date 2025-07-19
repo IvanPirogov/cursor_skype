@@ -126,6 +126,27 @@ func (h *Hub) SendToUser(userID uuid.UUID, message []byte) {
 	}
 }
 
+func (h *Hub) SendToChatMembers(chatID string, message []byte, excludeUserID uuid.UUID) {
+	log.Printf("Sending message to chat %s members, excluding user %s", chatID, excludeUserID)
+	
+	h.mutex.RLock()
+	for userID, client := range h.clients {
+		if userID != excludeUserID {
+			select {
+			case client.Send <- message:
+				log.Printf("Message sent to chat member %s", userID)
+			default:
+				log.Printf("Failed to send message to user %s, closing connection", userID)
+				close(client.Send)
+				h.mutex.Lock()
+				delete(h.clients, userID)
+				h.mutex.Unlock()
+			}
+		}
+	}
+	h.mutex.RUnlock()
+}
+
 
 
 func (h *Hub) IsUserOnline(userID uuid.UUID) bool {

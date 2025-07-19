@@ -129,15 +129,23 @@ func (c *Client) handleIncomingMessage(message []byte) {
 }
 
 func (c *Client) handleChatMessage(msg *Message) {
-	// Broadcast to all connected clients
-	data, _ := json.Marshal(msg)
-	c.Hub.broadcast <- data
+	// Send to chat members only
+	if chatData, ok := msg.Data.(map[string]interface{}); ok {
+		if chatID, ok := chatData["chat_id"].(string); ok {
+			data, _ := json.Marshal(msg)
+			c.Hub.SendToChatMembers(chatID, data, c.UserID)
+		}
+	}
 }
 
 func (c *Client) handleTypingMessage(msg *Message) {
-	// Broadcast typing indicator to other users
-	data, _ := json.Marshal(msg)
-	c.Hub.broadcast <- data
+	// Send typing indicator to chat members only
+	if chatData, ok := msg.Data.(map[string]interface{}); ok {
+		if chatID, ok := chatData["chat_id"].(string); ok {
+			data, _ := json.Marshal(msg)
+			c.Hub.SendToChatMembers(chatID, data, c.UserID)
+		}
+	}
 }
 
 func (c *Client) handleCallOffer(msg *Message) {
