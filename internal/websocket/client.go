@@ -20,7 +20,7 @@ var (
 	space   = []byte{' '}
 )
 
-func (c *Client) readPump() {
+func (c *Client) ReadPump() {
 	defer func() {
 		c.Hub.unregister <- c
 		c.Conn.Close()
@@ -49,7 +49,7 @@ func (c *Client) readPump() {
 	}
 }
 
-func (c *Client) writePump() {
+func (c *Client) WritePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
