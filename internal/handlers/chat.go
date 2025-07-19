@@ -9,9 +9,9 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"skytalk/internal/db"
-	"skytalk/internal/websocket"
-	"skytalk/pkg/models"
+	"messenger/internal/db"
+	"messenger/internal/websocket"
+	"messenger/pkg/models"
 )
 
 type ChatHandler struct {
